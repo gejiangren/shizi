@@ -1,0 +1,18 @@
+# 拾字 / Shizi · Python 依赖
+# 用法：pip install -r requirements.txt
+
+# 后端 / Backend
+fastapi>=0.115
+uvicorn[standard]>=0.30
+python-multipart>=0.0.20    # 文件上传
+httpx>=0.27                  # AI / B 站 API 客户端
+
+# 视频下载 / Video download
+yt-dlp>=2025.1.0
+
+# 语音识别 / ASR — 仅 Apple Silicon 用 mlx-whisper
+# 其他平台请改用 faster-whisper（README 有说明）
+mlx-whisper>=0.4
+
+# 浏览器 cookies 读取（绕过 B 站 412/352 风控）
+browser-cookie3>=0.20

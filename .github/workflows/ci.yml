@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  python:
+    name: Python · compile + lint
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install ruff (lint only — 不装运行依赖)
+        run: pip install ruff
+
+      - name: Syntax check · py_compile
+        run: python -m py_compile server.py
+
+      - name: Lint · ruff (宽松规则)
+        run: |
+          ruff check server.py \
+            --select=E9,F63,F7,F82 \
+            --output-format=github
+
+  frontend:
+    name: Frontend · JS / CSS / HTML
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: JS syntax check
+        run: |
+          node --check static/app.js
+          node --check static/icons.js
+
+      - name: CSS 大括号配对（最低限度）
+        run: |
+          for f in static/*.css; do
+            open=$(grep -o '{' "$f" | wc -l | tr -d ' ')
+            close=$(grep -o '}' "$f" | wc -l | tr -d ' ')
+            if [ "$open" != "$close" ]; then
+              echo "❌ $f : { $open vs } $close"
+              exit 1
+            else
+              echo "✓ $f : $open pairs"
+            fi
+          done
+
+      - name: HTML 基本检查
+        run: |
+          if ! grep -q "<!doctype html" static/index.html; then
+            echo "❌ static/index.html 缺 doctype"; exit 1
+          fi
+          echo "✓ static/index.html ok"

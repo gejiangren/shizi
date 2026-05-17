@@ -1,0 +1,50 @@
+拾字 / Shizi — Voicetype Studio
+================================
+
+本项目源代码采用 GNU AGPL 3.0 协议。
+This project's source code is licensed under GNU AGPL 3.0 (see LICENSE).
+
+第三方资产 / Third-Party Assets
+--------------------------------
+
+1. Yandex Sans 字体 (static/fonts/)
+   Yandex 出品的免费字体家族，允许在商业 / 非商业项目里使用。
+   Free font family by Yandex, allowed for commercial & non-commercial use.
+   https://github.com/yandex/YandexSansWeb
+
+2. Instrument Serif (Google Fonts, 远程加载)
+   设计：Rodrigo Fuenzalida · 协议：SIL Open Font License 1.1
+   Designer: Rodrigo Fuenzalida · License: SIL Open Font License 1.1
+   https://fonts.google.com/specimen/Instrument+Serif
+
+3. Noto Serif SC / Noto Sans SC (Google Fonts, 远程加载)
+   Google · SIL Open Font License 1.1
+   https://fonts.google.com/noto
+
+4. yt-dlp · Unlicense / Public Domain
+   https://github.com/yt-dlp/yt-dlp
+
+5. mlx-whisper · MIT License
+   https://github.com/ml-explore/mlx-examples/tree/main/whisper
+
+6. browser-cookie3 · LGPL 3.0
+   https://github.com/borisbabic/browser_cookie3
+
+7. 设计灵感 / Design inspiration
+   配色 / 杂志气质参考 RANEPA (Russian Presidential Academy) 设计系统。
+   Color palette & editorial typography inspired by RANEPA design system.
+
+8. AI 服务商接入（不分发其代码 / 仅 API 调用）
+   AI providers (no code redistributed, API calls only):
+   - DeepSeek    https://api-docs.deepseek.com
+   - OpenAI      https://platform.openai.com
+   - Anthropic   https://docs.anthropic.com
+   - 通义千问     https://help.aliyun.com/zh/model-studio
+   - 智谱 GLM    https://bigmodel.cn
+   - 月之暗面 Kimi https://platform.kimi.com
+
+商标 / Trademarks
+------------------
+"Bilibili"、"YouTube"、"DeepSeek" 等为各自所有者的商标。本项目仅是它们公开 API 的消费者，与任何上述方均无附属关系。
+
+"Bilibili", "YouTube", "DeepSeek", etc. are trademarks of their respective owners. This project is merely a consumer of their public APIs and is not affiliated with or endorsed by any of them.

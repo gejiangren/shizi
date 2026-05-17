@@ -1,0 +1,44 @@
+# ─── Python ───
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+ENV/
+
+# ─── 拾字 · 用户数据（个人，不入库） ───
+# SQLite 历史记录
+shizi.db
+shizi.db-journal
+# 下载的临时音频
+cache/
+# 转录结果文件（个人）
+outputs/
+# 旧 Gradio 备份等
+*.bak
+
+# 注意：~/.shizi/config.json 不在仓库目录内，但提醒：
+# AI Key + 下载路径配置存在 ~/.shizi/config.json
+# 绝不要把它复制到仓库里
+
+# ─── macOS ───
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ─── 编辑器 ───
+.vscode/
+.idea/
+*.swp
+*.swo
+.cursorignore
+
+# ─── 日志 ───
+*.log
+nohup.out
+
+# ─── 测试 / 临时 ───
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/

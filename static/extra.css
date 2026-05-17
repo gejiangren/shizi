@@ -1,0 +1,581 @@
+/* 拾字 — 补充样式：Tweaks 浮动面板 + FAB + 应用根容器修正 */
+
+html, body { height: 100%; }
+.app-root {
+  width: 100%; height: 100%;
+  background: var(--bg-page);
+  min-height: 100vh;
+}
+
+/* ============================================================
+   中文排版 · 行首禁则
+   禁止「，。！？：；》」』、）】」」」』」』」』」」」」」」」』」』」」」」」」」」」、」、」"」"」'」'」'」'」'」(、）、》、」、』、）、)、>」 这类标点出现在行首/行尾错误处
+   `line-break: strict` 是 CSS 标准的 CJK 严格断行规则。
+============================================================ */
+html, body {
+  line-break: strict;
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+/* 强保险：所有文本类容器再显式继承一次，避免某些浏览器/旧引擎不级联 */
+p, div, span, a, h1, h2, h3, h4, h5, h6, li, td, th, button, input, textarea, label, code, pre, blockquote {
+  line-break: strict;
+}
+/* URL / 路径 / 代码 这类等宽字体允许任意位置断行（避免溢出） */
+.url-input, .url-meta-text, .recent-meta, .complete-meta,
+.hist-sub .source-tag, .log, .ai-doc pre, .dl-prog-file,
+input[type="text"], input[type="password"], code, pre, .path,
+.fc-name {
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  line-break: anywhere;
+}
+
+/* ----- 缩放系统：UI 与 转录文本 互相独立 -----
+   .app 整体走 --ui-scale；.transcript 在 .app 里，
+   通过 calc(text/ui) 反向抵消父 zoom，相当于只受 --text-scale 控制。 */
+:root {
+  --ui-scale:   1;
+  --text-scale: 1;
+}
+.app {
+  zoom: var(--ui-scale);
+  min-height: calc(100vh / var(--ui-scale));
+  height:     calc(100vh / var(--ui-scale));
+}
+.transcript {
+  zoom: calc(var(--text-scale) / var(--ui-scale));
+}
+/* Tweaks 面板独立显示，不受 UI scale 影响 */
+.tweaks-fab, .tweaks-panel { zoom: 1; }
+
+/* ----- Tweaks FAB ----- */
+.tweaks-fab {
+  position: fixed;
+  bottom: 22px;
+  right: 22px;
+  z-index: 100;
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 40px; padding: 0 16px;
+  background: var(--bg-card);
+  color: var(--fg-1);
+  border-radius: var(--radius-pill);
+  font-size: 13px; font-weight: 600;
+  box-shadow: var(--shadow-pop);
+  border: 1px solid var(--ranepa-line);
+  transition: transform .12s, box-shadow .12s;
+}
+.tweaks-fab:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 36px rgba(20,20,30,0.18);
+}
+
+/* ----- Tweaks panel ----- */
+.tweaks-panel {
+  position: fixed;
+  right: 22px;
+  bottom: 74px;
+  z-index: 100;
+  width: 300px;
+  background: var(--bg-card);
+  border: 1px solid var(--ranepa-line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-pop);
+  overflow: hidden;
+  animation: tweaks-in .18s ease-out;
+}
+@keyframes tweaks-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.tweaks-hd {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 14px;
+  border-bottom: var(--border-hair);
+}
+.tweaks-body {
+  padding: 12px 16px 16px;
+  display: flex; flex-direction: column;
+  gap: 18px;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+}
+.tweaks-section { display: flex; flex-direction: column; gap: 10px; }
+.tweaks-section-hd {
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--fg-3);
+}
+.tweaks-row {
+  display: flex; align-items: center; gap: 12px;
+  font-size: 12px;
+  color: var(--fg-2);
+}
+.tweaks-label { flex: 1; }
+.tweaks-row input[type="range"] {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: var(--bg-muted);
+  border-radius: 2px;
+  outline: none;
+}
+.tweaks-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: 2px solid var(--bg-card);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.tweaks-value {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg-1);
+  min-width: 40px;
+  text-align: right;
+}
+.tweaks-colors {
+  display: flex; gap: 8px;
+}
+.tone-swatch {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  border: 2px solid var(--bg-card);
+  box-shadow: 0 0 0 1px var(--ranepa-line);
+  cursor: pointer;
+  transition: transform .12s;
+}
+.tone-swatch:hover { transform: scale(1.08); }
+.tone-swatch.is-on {
+  box-shadow: 0 0 0 2px var(--accent), 0 0 0 4px var(--bg-card);
+}
+
+/* ----- Adv-select reset ----- */
+.adv-select {
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.adv-select option { background: var(--bg-card); color: var(--fg-1); }
+
+/* ----- Make recent-row clickable feedback ----- */
+.recent-row { transition: background .08s; }
+.hist-item { transition: background .08s; }
+
+/* ----- Disabled button visual ----- */
+.btn-primary:disabled, .btn-go:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+/* ============================================================
+   AI 标识体系 — 用"AI"两字徽章代替 ✨，强调文字优先
+============================================================ */
+
+/* 通用 AI 文字徽章 — 嵌在按钮里 */
+.ai-text-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent);
+  color: white;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  line-height: 1.2;
+  flex: 0 0 auto;
+}
+.ai-text-badge.sm { padding: 2px 5px; font-size: 9px; border-radius: 3px; }
+.ai-text-badge.lg {
+  padding: 8px 14px;
+  font-size: 18px;
+  border-radius: 8px;
+  letter-spacing: 0.08em;
+}
+/* 在已经是 accent 底色的按钮上，徽章反白 */
+.ai-text-badge.on-accent { background: white; color: var(--accent); }
+
+.ai-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 历史列表的 AI 整理按钮 — 比其他动作按钮宽 */
+.hist-ai-btn {
+  width: auto !important;
+  padding: 0 6px !important;
+  height: 28px;
+  background: transparent;
+}
+.hist-ai-btn:hover .ai-text-badge {
+  background: var(--ranepa-crimson-dark);
+}
+
+/* 侧栏 AI 设置按钮 — 用文字代替齿轮 */
+.rail-btn-text { background: transparent; }
+.rail-text-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-muted);
+  color: var(--fg-3);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  padding: 4px 7px;
+  border-radius: 6px;
+  line-height: 1;
+  min-width: 28px;
+  transition: background .12s, color .12s;
+}
+.rail-btn-text:hover .rail-text-badge {
+  background: var(--fg-3);
+  color: white;
+}
+.rail-btn-text.is-active .rail-text-badge {
+  background: var(--accent);
+  color: white;
+}
+/* 不要走 rail-btn 的左侧红条指示，因为徽章本身已经够明确 */
+.rail-btn-text.is-active::after { display: none; }
+.rail-btn-text.is-active { background: transparent; }
+
+/* AI 整理视图头部的缩略图 — 用 AI 徽章代替原来的橙红渐变 */
+.ai-thumb {
+  background: var(--accent) !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+}
+.ai-thumb::after { display: none; }
+
+/* ============================================================
+   Settings page
+============================================================ */
+.settings-hd {
+  padding: 26px 32px 18px;
+  border-bottom: var(--border-hair);
+}
+.settings-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: -0.01em;
+  margin: 0 0 6px;
+  color: var(--fg-1);
+}
+.settings-sub {
+  font-size: 13px;
+  color: var(--fg-3);
+  margin: 0;
+  line-height: 1.6;
+}
+
+.settings-body {
+  padding: 18px 32px 32px;
+  display: flex; flex-direction: column;
+  gap: 16px;
+}
+
+.settings-field { display: flex; flex-direction: column; gap: 6px; }
+.settings-field label {
+  font-size: 12px; font-weight: 600;
+  color: var(--fg-2);
+}
+.settings-hint {
+  color: var(--fg-3); font-weight: 400; font-size: 11px;
+}
+.settings-input {
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  background: var(--bg-muted);
+  border: 1.5px solid transparent;
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--fg-1);
+  outline: none;
+  transition: background .12s, border-color .12s;
+}
+textarea.settings-input {
+  height: auto;
+  padding: 10px 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.55;
+  resize: vertical;
+  min-height: 96px;
+}
+.settings-input:focus {
+  background: var(--bg-card);
+  border-color: var(--accent);
+}
+select.settings-input {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--fg-3) 50%),
+                    linear-gradient(135deg, var(--fg-3) 50%, transparent 50%);
+  background-position: calc(100% - 16px) 50%, calc(100% - 11px) 50%;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 32px;
+  font-family: var(--font-body);
+}
+
+.settings-actions {
+  display: flex; align-items: center; gap: 10px;
+  margin-top: 4px;
+}
+.settings-test-result {
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.settings-test-result.ok { background: rgba(46,139,87,0.12); color: var(--ranepa-green); }
+.settings-test-result.err { background: rgba(241,162,63,0.16); color: var(--ranepa-orange); }
+
+.settings-section-hd {
+  font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--fg-3);
+  margin-top: 14px; margin-bottom: 4px;
+}
+
+.settings-status {
+  display: inline-flex; align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--bg-muted);
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--fg-2);
+  width: fit-content;
+  margin: 12px 0 4px;
+}
+.settings-status .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+}
+.settings-status .dot.ok    { background: var(--ranepa-green); }
+.settings-status .dot.empty { background: var(--fg-4); }
+
+/* ============================================================
+   AI organize view
+============================================================ */
+.ai-doc {
+  flex: 1;
+  min-height: 0;
+  padding: 28px 48px 56px;
+  overflow-y: auto;
+  font-size: 14px;
+  line-height: 1.75;
+  color: var(--fg-1);
+}
+.ai-doc h1 {
+  font-family: var(--font-display);
+  font-size: 28px; font-weight: 700;
+  line-height: 1.2; letter-spacing: -0.01em;
+  margin: 20px 0 14px;
+  color: var(--fg-1);
+}
+.ai-doc h2 {
+  font-family: var(--font-display);
+  font-size: 21px; font-weight: 700;
+  margin: 26px 0 12px;
+  color: var(--fg-1);
+  border-bottom: var(--border-hair);
+  padding-bottom: 8px;
+}
+.ai-doc h3 {
+  font-family: var(--font-display);
+  font-size: 17px; font-weight: 700;
+  margin: 20px 0 10px;
+  color: var(--fg-1);
+}
+.ai-doc h4 { font-family: var(--font-display); font-size: 15px; font-weight: 700; margin: 16px 0 8px; }
+.ai-doc h5, .ai-doc h6 { font-family: var(--font-display); font-size: 13px; font-weight: 700; margin: 14px 0 8px; }
+.ai-doc p { margin: 0 0 14px; line-height: 1.8; color: var(--fg-2); }
+.ai-doc p strong, .ai-doc li strong { color: var(--fg-1); font-weight: 600; }
+.ai-doc ul, .ai-doc ol { margin: 0 0 16px; padding-left: 1.5em; }
+.ai-doc li { margin-bottom: 6px; line-height: 1.7; color: var(--fg-2); }
+.ai-doc li::marker { color: var(--accent); }
+.ai-doc blockquote {
+  margin: 14px 0;
+  padding: 12px 18px;
+  background: var(--ranepa-crimson-tint);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  font-size: 13px;
+  color: var(--fg-1);
+}
+.ai-doc hr {
+  margin: 22px 0;
+  border: 0;
+  border-top: 1px dashed var(--ranepa-line);
+}
+.ai-doc code {
+  background: var(--bg-muted);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  color: var(--accent);
+}
+.ai-doc pre {
+  background: #0F0F12;
+  color: #C8C8CE;
+  padding: 14px 18px;
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+  margin: 14px 0;
+}
+.ai-doc pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.ai-doc .md-ts {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--accent);
+  background: var(--ranepa-crimson-tint);
+  padding: 1px 6px;
+  border-radius: 3px;
+  margin-right: 4px;
+  vertical-align: 1px;
+}
+.ai-cursor {
+  color: var(--accent);
+  animation: blink 1s infinite;
+  margin-left: 2px;
+}
+.ai-error {
+  margin: 32px;
+  padding: 16px 20px;
+  background: rgba(241,162,63,0.12);
+  color: var(--ranepa-orange);
+  border-left: 3px solid var(--ranepa-orange);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  font-size: 13px;
+}
+
+/* AI 整理视图也使用 transcript 的文本缩放 */
+.ai-doc { zoom: calc(var(--text-scale) / var(--ui-scale)); }
+
+/* ============================================================
+   错误页 — 原始报错折叠框 + Safari 一次性提示
+============================================================ */
+.err-raw {
+  margin-top: 14px;
+  font-size: 11px;
+  background: var(--bg-muted);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  text-align: left;
+}
+.err-raw summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--fg-3);
+  user-select: none;
+  outline: none;
+}
+.err-raw summary::-webkit-details-marker { color: var(--fg-3); }
+.err-raw[open] summary { color: var(--fg-2); margin-bottom: 6px; }
+.err-raw pre {
+  margin: 6px 0 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: var(--fg-2);
+  max-height: 200px;
+  overflow-y: auto;
+  background: transparent;
+  padding: 0;
+}
+.err-tip {
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: rgba(241,162,63,0.10);
+  border-left: 3px solid var(--ranepa-orange);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  font-size: 12px;
+  color: var(--fg-2);
+  line-height: 1.7;
+  text-align: left;
+}
+.err-tip b { color: var(--fg-1); }
+
+/* ============================================================
+   "需要登录" 错误页 — 浏览器选择栅格
+============================================================ */
+.browser-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin: 20px 0 4px;
+  max-width: 360px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.browser-chip {
+  height: 38px;
+  padding: 0 12px;
+  display: flex; align-items: center; justify-content: center;
+  border: 1.5px solid var(--ranepa-line);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--fg-2);
+  font-size: 13px;
+  font-weight: 500;
+  transition: border-color .12s, color .12s, background .12s;
+}
+.browser-chip:hover {
+  border-color: var(--fg-3);
+  color: var(--fg-1);
+}
+.browser-chip.is-on {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--ranepa-crimson-tint);
+  font-weight: 600;
+}
+
+/* ----- Mobile / narrow screen fallback (collapse to single column) ----- */
+@media (max-width: 900px) {
+  .workarea {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto 1fr;
+  }
+  .rail { width: 56px; flex-basis: 56px; }
+  .topbar-pill { display: none; }
+  .topbar { padding: 0 14px; }
+  .tip-strip { padding: 12px 16px; gap: 16px; }
+  .doc-shell { grid-template-columns: 1fr; }
+  .doc-toc { display: none; }
+  .doc-body { padding: 22px 18px 48px; }
+  .complete-hd { flex-wrap: wrap; }
+  .complete-actions { flex: 1 0 100%; justify-content: flex-end; }
+}

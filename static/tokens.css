@@ -1,0 +1,99 @@
+/* RANEPA tokens — adapted for a Chinese consumer-app tool.
+   Yandex Sans handles Latin/digits/punctuation; CJK falls back to system Chinese fonts. */
+
+@font-face { font-family: "Yandex Sans Display"; font-weight: 300; font-style: normal; font-display: swap; src: url("fonts/YandexSansDisplay-Light.woff2") format("woff2"); }
+@font-face { font-family: "Yandex Sans Display"; font-weight: 400; font-style: normal; font-display: swap; src: url("fonts/YandexSansDisplay-Regular.woff2") format("woff2"); }
+@font-face { font-family: "Yandex Sans Display"; font-weight: 700; font-style: normal; font-display: swap; src: url("fonts/YandexSansDisplay-Bold.woff2") format("woff2"); }
+@font-face { font-family: "Yandex Sans Text"; font-weight: 300; font-style: normal; font-display: swap; src: url("fonts/YandexSansText-Light.woff2") format("woff2"); }
+@font-face { font-family: "Yandex Sans Text"; font-weight: 400; font-style: normal; font-display: swap; src: url("fonts/YandexSansText-Regular.woff2") format("woff2"); }
+@font-face { font-family: "Yandex Sans Text"; font-weight: 500; font-style: normal; font-display: swap; src: url("fonts/YandexSansText-Medium.woff2") format("woff2"); }
+@font-face { font-family: "Yandex Sans Text"; font-weight: 700; font-style: normal; font-display: swap; src: url("fonts/YandexSansText-Bold.woff2") format("woff2"); }
+
+:root {
+  /* Brand palette */
+  --ranepa-crimson:      #A30236;
+  --ranepa-crimson-dark: #8A002D;
+  --ranepa-crimson-tint: #FBEAEF;
+  --ranepa-navy:         #061A6C;
+  --ranepa-orange:       #F1A23F;
+  --ranepa-red-orange:   #EB5E3F;
+  --ranepa-yellow:       #FFCC00;
+  --ranepa-green:        #2E8B57;
+
+  /* Neutrals */
+  --ranepa-ink:    #1A1A1F;
+  --ranepa-ink-2:  #323237;
+  --ranepa-ink-3:  #4D4D55;
+  --ranepa-grey:   #6D6D75;
+  --ranepa-grey-2: #999AA0;
+  --ranepa-grey-3: #C6C6CC;
+  --ranepa-line:   #ECECEE;
+  --ranepa-line-2: #F4F4F6;
+  --ranepa-paper:  #FFFFFF;
+  --ranepa-canvas: #F4F1EB;  /* warmer paper-like canvas */
+
+  /* Semantic */
+  --bg-page:    var(--ranepa-canvas);
+  --bg-card:    var(--ranepa-paper);
+  --bg-muted:   var(--ranepa-line-2);
+  --fg-1:       var(--ranepa-ink);
+  --fg-2:       var(--ranepa-ink-3);
+  --fg-3:       var(--ranepa-grey);
+  --fg-4:       var(--ranepa-grey-2);
+  --fg-on-brand: #FFFFFF;
+  --accent:      var(--ranepa-crimson);
+  --accent-warm: var(--ranepa-orange);
+  --accent-hot:  var(--ranepa-red-orange);
+  --accent-cool: var(--ranepa-navy);
+  --border-hair: 1px solid var(--ranepa-line);
+
+  /* Typography */
+  --font-display: "Yandex Sans Display", "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+  --font-body:    "Yandex Sans Text",    "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+  --font-serif:   "Instrument Serif", "Noto Serif SC", "Songti SC", "Source Han Serif SC", "PingFang SC", serif;
+  --font-serif-cn: "Noto Serif SC", "Songti SC", "Source Han Serif SC", "PingFang SC", serif;
+  --font-mono:    "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+
+  --fs-base: 14px;          /* tweakable */
+  --space-unit: 8px;         /* tweakable (density) */
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-pill: 999px;
+
+  --shadow-card: 0 1px 2px rgba(20,20,30,0.04), 0 4px 16px rgba(20,20,30,0.04);
+  --shadow-pop:  0 8px 32px rgba(20,20,30,0.10);
+}
+
+/* ---- Dark mode ---- */
+:root[data-theme="dark"] {
+  --ranepa-canvas: #0F0F12;
+  --ranepa-paper:  #18181C;
+  --ranepa-line:   #2A2A30;
+  --ranepa-line-2: #1F1F24;
+  --ranepa-ink:    #F2F2F4;
+  --ranepa-ink-2:  #D9D9DC;
+  --ranepa-ink-3:  #B5B5BB;
+  --ranepa-grey:   #888890;
+  --ranepa-grey-2: #6A6A72;
+  --ranepa-grey-3: #4A4A52;
+  --ranepa-crimson-tint: #2A1217;
+  --accent:        #D03A60;  /* lifted for contrast on dark */
+  --shadow-card: 0 1px 2px rgba(0,0,0,0.4), 0 4px 16px rgba(0,0,0,0.3);
+  --shadow-pop:  0 8px 32px rgba(0,0,0,0.5);
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0;
+  font-family: var(--font-body);
+  font-size: var(--fs-base);
+  color: var(--fg-1);
+  background: var(--bg-page);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+input, textarea, select { font-family: inherit; color: inherit; }
