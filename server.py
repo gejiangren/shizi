@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 gejiangren <https://github.com/gejiangren>
+# 拾字 / Shizi · Voicetype Studio — https://github.com/gejiangren/shizi
 """拾字 后端 — FastAPI 服务
 
 替代原 Gradio。负责：

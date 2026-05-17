@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 gejiangren <https://github.com/gejiangren>
 /* 拾字 — Inline SVG icons (vanilla JS port of app-icons.jsx)
    每个 icon 函数返回一个 SVG 元素，或 svg 字符串。
 */

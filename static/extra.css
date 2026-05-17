@@ -1,4 +1,6 @@
-/* 拾字 — 补充样式：Tweaks 浮动面板 + FAB + 应用根容器修正 */
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+   Copyright (C) 2026 gejiangren <https://github.com/gejiangren>
+   拾字 — 补充样式：Tweaks 浮动面板 + FAB + 应用根容器修正 */
 
 html, body { height: 100%; }
 .app-root {

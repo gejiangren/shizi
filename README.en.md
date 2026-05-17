@@ -2,6 +2,14 @@
 
 > Turn any video into readable text — runs entirely on your Mac, nothing uploaded.
 
+<!-- Copyright Notice -->
+> 🔏 **Original author** [@gejiangren](https://github.com/gejiangren) · **First released** 2026-05-17 · **License** [AGPL-3.0-or-later](./LICENSE)
+> **Canonical repository** https://github.com/gejiangren/shizi
+>
+> Under AGPL 3.0, **forks must keep this notice and LICENSE**; **any network/SaaS deployment must publish its modified source**.
+
+---
+
 A local-first video processing workstation for macOS, with **two chains**:
 - 🅣 **Transcribe**: Paste a video URL → mlx-whisper recognizes → outputs txt / srt / vtt / json
 - ⬇ **Download**: Paste a video URL → yt-dlp picks quality → saves to disk

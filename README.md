@@ -2,6 +2,14 @@
 
 > 把任何视频变成可读的文字 —— 本地运行，链接和音频不上传任何服务器。
 
+<!-- 著作权声明 / Copyright Notice -->
+> 🔏 **原作者** [@gejiangren](https://github.com/gejiangren) · **首次发布** 2026-05-17 · **协议** [AGPL-3.0-or-later](./LICENSE)
+> **原始仓库** https://github.com/gejiangren/shizi
+>
+> 依据 AGPL 3.0，**转载 / 二次开发必须保留本声明和 LICENSE 文件**；**任何在线服务部署都必须公开你修改后的源码**。
+
+---
+
 一个 macOS 本地的视频处理工作站，**两条链路**：
 - 🅣 **转录文字**：粘视频链接 → mlx-whisper 识别 → 输出 txt / srt / vtt / json
 - ⬇ **下载视频**：粘视频链接 → yt-dlp 选画质 → 下到本地

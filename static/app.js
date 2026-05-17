@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 gejiangren <https://github.com/gejiangren>
+// 拾字 / Shizi · Voicetype Studio — https://github.com/gejiangren/shizi
 /* 拾字 — 前端主程序
    状态机：state.view (home|history) + state.flow (empty|filled|downloading|...)
    API：详见 server.py
