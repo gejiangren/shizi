@@ -1109,6 +1109,14 @@ def run_pipeline(job: Job):
         model_id = MODEL_MAP.get(job.model, MODEL_MAP["large-v3"])
         language = LANG_MAP.get(job.lang)
 
+        # Whisper 默认中文不输出标点（训练数据偏向无标点字幕）。给一段带标点
+        # 的"种子文本"作为 initial_prompt，模型会倾向于沿用同样风格。
+        if language == "en":
+            initial_prompt = "The following is an English transcript with proper punctuation, commas, and periods."
+        else:
+            # 中文 / 中英混合 / auto 都走中文 prompt（最常见场景）
+            initial_prompt = "以下是一段普通话语音转写，请用规范的中文标点（，。？！：；""''）断句。"
+
         job.log("inf", f"加载模型: {model_id}")
         t_tr_start = time.time()
         result = mlx_whisper.transcribe(
@@ -1116,6 +1124,8 @@ def run_pipeline(job: Job):
             path_or_hf_repo=model_id,
             language=language,
             verbose=False,
+            initial_prompt=initial_prompt,
+            condition_on_previous_text=True,  # 让段间承上启下，标点更连贯
         )
         if job.cancel_event.is_set():
             raise InterruptedError("cancelled")
