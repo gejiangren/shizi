@@ -909,8 +909,11 @@ def _douyin_share_download(job: "Job", audio_path: Path) -> Path:
     duration_s = info["duration_s"] or 0
     time_re = re.compile(r"time=(\d+):(\d+):(\d+)\.(\d+)")
     last_err: Optional[str] = None
+    # 转录只要音频，把 SSR 默认 720p 替换成 360p。CDN 上文件大小约缩到 1/3，
+    # 抖音视频音轨没差别（都是同一条 AAC）。下载视频是另一条链路，不动。
+    mirrors = [re.sub(r"ratio=\d+p", "ratio=360p", u) for u in info["video_urls"]]
 
-    for i, u in enumerate(info["video_urls"]):
+    for i, u in enumerate(mirrors):
         # ffmpeg 当 downloader：HTTP 断流自动重连，输出端直接编码为 mp3
         cmd = [
             "ffmpeg", "-y", "-hide_banner", "-loglevel", "info",
@@ -930,7 +933,7 @@ def _douyin_share_download(job: "Job", audio_path: Path) -> Path:
                                     stderr=subprocess.STDOUT, text=True, bufsize=1)
         except Exception as e:
             last_err = f"ffmpeg 启动失败: {e}"
-            job.log("warn", f"mirror {i+1}/{len(info['video_urls'])} {last_err}")
+            job.log("warn", f"mirror {i+1}/{len(mirrors)} {last_err}")
             continue
 
         tail_lines: list[str] = []  # 报错时回放
@@ -958,7 +961,7 @@ def _douyin_share_download(job: "Job", audio_path: Path) -> Path:
             job.emit("progress", stage="download", progress=100)
             return mp3_path
         last_err = f"ffmpeg returncode={proc.returncode}; last: " + " | ".join(tail_lines[-3:])[:240]
-        job.log("warn", f"mirror {i+1}/{len(info['video_urls'])} 失败")
+        job.log("warn", f"mirror {i+1}/{len(mirrors)} 失败")
         try: mp3_path.unlink()
         except Exception: pass
 
