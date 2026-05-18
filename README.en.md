@@ -40,29 +40,39 @@ A local-first video processing workstation for macOS, with **two chains**:
 
 ---
 
-## Install (one command)
+## Install
+
+### Option ①: GUI installer (recommended)
+
+1. Download latest ZIP from [Releases](https://github.com/gejiangren/shizi/releases)
+2. Unzip, **double-click `installer/首次安装.command`**
+3. Wizard auto-installs Homebrew / Python / ffmpeg / yt-dlp (3-5 min)
+4. Drag `installer/拾字.app` into **Applications**
+5. Daily use: **double-click 拾字.app** → browser opens automatically
+
+### Option ②: Command-line (developers)
 
 ```bash
-git clone https://github.com/<your-username>/shizi.git
+git clone https://github.com/gejiangren/shizi.git
 cd shizi
 bash setup.sh
+bash 启动.command
 ```
-
-`setup.sh` will:
-1. Install `yt-dlp` and `ffmpeg` via Homebrew (skip if present)
-2. Create Python venv `.venv/`
-3. Install Python deps from `requirements.txt`
-4. Print launch instructions
 
 ---
 
-## Launch
+## ⚠ First-launch Gatekeeper warning
 
-```bash
-bash 启动.command          # or double-click 启动.command in Finder
+This project ships unsigned (no $99/yr Apple Developer membership). Modern macOS shows "unidentified developer" on first launch. **One-time workaround**:
+
+```
+1. Right-click 拾字.app
+2. Select "Open" from the menu
+3. Click "Open" in the dialog
+4. Subsequent double-clicks just work — never asks again
 ```
 
-Browser opens at `http://127.0.0.1:7860` automatically. Stop with `Ctrl+C` in the terminal.
+Same for `停止拾字.app`.
 
 ---
 

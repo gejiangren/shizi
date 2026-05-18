@@ -40,29 +40,42 @@
 
 ---
 
-## 安装（一行命令）
+## 安装
+
+### 方式 ①：图形界面（小白友好 · 推荐）
+
+1. 从 [Releases](https://github.com/gejiangren/shizi/releases) 下载最新版本的 ZIP
+2. 解压，**双击「首次安装.command」**（在 `installer/` 目录里）
+3. 跟着向导走，3-5 分钟自动装好 Homebrew / Python / ffmpeg / yt-dlp 全套
+4. 完成后把 `installer/拾字.app` 拖进 **应用程序** 文件夹
+5. 之后日常使用：**双击拾字.app** → 浏览器自动打开
+
+### 方式 ②：终端命令行（开发者）
 
 ```bash
-git clone https://github.com/<your-username>/shizi.git
+git clone https://github.com/gejiangren/shizi.git
 cd shizi
 bash setup.sh
+bash 启动.command
 ```
-
-`setup.sh` 会自动：
-1. 检查并通过 Homebrew 安装 `yt-dlp` `ffmpeg`
-2. 创建 Python 虚拟环境 `.venv/`
-3. 安装 `requirements.txt` 里的 Python 依赖
-4. 提示首次启动方式
 
 ---
 
-## 启动
+## ⚠ 首次打开 .app 看到「无法验证开发者」？
 
-```bash
-bash 启动.command           # 或者直接在 Finder 里双击「启动.command」
+由于本项目走免费分发路线（没付 Apple Developer $99/年），首次打开 .app 时 macOS Gatekeeper 会弹窗警告。**只需一次右键操作**：
+
+```
+1. 右键点击「拾字.app」
+2. 菜单里选「打开」
+3. 弹窗里再点一次「打开」
+   （比直接双击多出来这一步，仅此一次）
+4. 之后日常双击就行，再也不会弹
 ```
 
-浏览器会自动打开 `http://127.0.0.1:7860`。停止：在终端按 `Ctrl+C`。
+「停止拾字.app」首次打开同理。
+
+> 想彻底跳过这一步？开发者付费签名 + Apple 公证后就没这个警告了。Issue 区开了讨论，看后续要不要做。
 
 ---
 
