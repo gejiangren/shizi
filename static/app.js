@@ -1176,26 +1176,14 @@
               `请先在 ${BROWSERS.find(b=>b.k===picked)?.l} 里用账号登录 ${cp.domain}，登录成功后再点这里重试。`),
           );
         })() : null,
-        // Safari 专属一次性提示
-        picked === "safari" ? h("div", {class:"err-tip"},
-          h("b", {}, "Safari 注意 "),
-          "macOS 第一次读 Safari Cookies 时，需要给运行 server.py 的应用（Terminal / iTerm / Warp）",
-          h("b", {}, "「完全磁盘访问权限」"),
-          "。系统设置 → 隐私与安全 → 完全磁盘访问 → 把对应 App 勾上。"
-        ) : null,
-        // 通用前置条件提示
-        picked ? h("div", {class:"err-tip", style:{marginTop:8}},
-          h("b", {}, "前提："),
-          `已经在 ${BROWSERS.find(b => b.k === picked).l} 里用账号登录过这个网站（B 站 / YouTube 等）。yt-dlp 只读取那个浏览器的 Cookie 文件，自己不做登录。`
-        ) : null,
         // 逃生通道 — 反复触发风控时手动粘贴
-        h("div", {class:"err-tip", style:{marginTop:8, background:"rgba(46,139,87,0.08)", borderLeftColor:"var(--ranepa-green)"}},
-          h("b", {}, "如果反复风控失败 "),
-          "可以打开浏览器进入 UP 主主页，逐个右键复制你想要的视频链接，粘到下方批量列表里 —— 不走扫描接口，绕开风控。",
+        h("div", {class:"err-tip", style:{marginTop:12, background:"rgba(46,139,87,0.08)", borderLeftColor:"var(--ranepa-green)"}},
+          h("b", {}, "反复失败？"),
+          "改用「手动粘贴一批 BV 号 / 视频链接」绕开扫描接口。",
           h("div", {style:{marginTop:8}},
             h("button", {class:"btn-secondary", style:{height:32, fontSize:12},
               onClick: () => { state.flow = "manual-paste"; render(); }
-            }, icon("Clipboard",{size:12}), "改用 · 手动粘贴一批链接")
+            }, icon("Clipboard",{size:12}), "手动粘贴")
           )
         ),
 

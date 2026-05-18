@@ -1019,20 +1019,23 @@
 
 /* ============== Error states ============== */
 .err-pane {
-  flex: 1;
-  display: flex;
-  /* 短内容垂直居中，长内容从顶部开始 + 可滚动 */
-  align-items: flex-start;
-  justify-content: center;
+  flex: 1 1 auto;
+  display: block;                  /* 不用 flex，避免与 overflow 互相干扰 */
   padding: 32px;
-  overflow-y: auto;
+  overflow-y: scroll;              /* scroll 而非 auto，保证滚动条占位稳定 */
+  overflow-x: hidden;
   min-height: 0;
+  overscroll-behavior: contain;    /* 滚到边缘不会带动父容器 */
+  scroll-behavior: smooth;
+  scrollbar-gutter: stable;        /* 滚动条占位不让内容左右抖 */
+  -webkit-overflow-scrolling: touch;
 }
 .err-card {
-  max-width: 480px;       /* 之前 380px 太窄，长说明强制换行多 */
+  max-width: 480px;
   width: 100%;
+  margin: 0 auto;                  /* 仅水平居中，竖直从顶部 */
   text-align: center;
-  margin: auto 0;         /* 短内容时仍接近竖直居中 */
+  padding-bottom: 32px;            /* 底部留呼吸 */
 }
 .err-icon {
   width: 64px; height: 64px;
