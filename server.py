@@ -461,6 +461,26 @@ _DOUYIN_MOBILE_UA = (
     "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) "
     "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
 )
+# SSR 默认给 aweme.snssdk.com，这个 host 在很多网络环境（VPN/海外 DNS/部分
+# ISP）解析不到。备选两个公网域名，DNS 普遍解析得到。
+_DOUYIN_FALLBACK_HOSTS = ("https://www.iesdouyin.com", "https://api.amemv.com")
+
+
+def _douyin_expand_urls(urls: list[str]) -> list[str]:
+    """SSR URL host 替换为公网备选 → 拼一组按顺序试的下载地址。"""
+    out: list[str] = []
+    seen: set[str] = set()
+    for u in urls:
+        if u not in seen:
+            out.append(u); seen.add(u)
+        m = re.match(r"^https?://[^/]+(/.*)$", u)
+        if not m:
+            continue
+        for h in _DOUYIN_FALLBACK_HOSTS:
+            u2 = h + m.group(1)
+            if u2 not in seen:
+                out.append(u2); seen.add(u2)
+    return out
 
 def _douyin_extract_video_id(url: str) -> Optional[str]:
     """从抖音 URL 抽视频 ID。短链先跟随重定向。"""
@@ -519,7 +539,7 @@ def _douyin_share_resolve(url: str) -> Optional[dict]:
             "title": item.get("desc") or "抖音视频",
             "duration_s": int((item.get("video") or {}).get("duration", 0) // 1000),
             "video_id": vid,
-            "video_urls": urls,
+            "video_urls": _douyin_expand_urls(urls),
             "thumbnail": ((item.get("video") or {}).get("cover") or {}).get("url_list", [None])[0],
             "uploader": (item.get("author") or {}).get("nickname"),
         }
