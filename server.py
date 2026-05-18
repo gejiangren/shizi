@@ -896,64 +896,73 @@ def probe_video(url: str, cookies_browser: Optional[str] = None) -> dict:
 import mlx_whisper  # lazy-import? -> import here cost ~2s. Keep at module top? actually here is fine.
 
 def _douyin_share_download(job: "Job", audio_path: Path) -> Path:
-    """抖音 fallback：iesdouyin share 接口拿直链 → urllib 下载 mp4 → ffmpeg 提音频。
-    yt-dlp 抖音 extractor 抓不动时走这条路。"""
+    """抖音 fallback：share 接口拿直链 → ffmpeg 直拉流 + 边解码音频。
+    用 ffmpeg 而不是 urllib 是因为抖音 CDN 经常中途 reset，ffmpeg 内置
+    -reconnect / -reconnect_streamed 能续传，urllib 不会。"""
     job.emit("progress", stage="download", progress=0)
     info = _douyin_share_resolve(job.url)
     if not info:
         raise RuntimeError("抖音解析失败：未能从 share 页提取视频地址")
     job.log("inf", f"抖音直链就绪：{info['title'][:40]} ({info['duration_s']}s)")
 
-    mp4_path = CACHE_DIR / f"{job.id}.mp4"
-    last_err: Optional[Exception] = None
-    ok = False
+    mp3_path = CACHE_DIR / f"{job.id}.mp3"
+    duration_s = info["duration_s"] or 0
+    time_re = re.compile(r"time=(\d+):(\d+):(\d+)\.(\d+)")
+    last_err: Optional[str] = None
+
     for i, u in enumerate(info["video_urls"]):
+        # ffmpeg 当 downloader：HTTP 断流自动重连，输出端直接编码为 mp3
+        cmd = [
+            "ffmpeg", "-y", "-hide_banner", "-loglevel", "info",
+            "-reconnect", "1",
+            "-reconnect_at_eof", "1",
+            "-reconnect_streamed", "1",
+            "-reconnect_on_network_error", "1",
+            "-reconnect_delay_max", "5",
+            "-user_agent", _DOUYIN_MOBILE_UA,
+            "-headers", "Referer: https://www.iesdouyin.com/\r\n",
+            "-i", u,
+            "-vn", "-acodec", "libmp3lame", "-q:a", "2",
+            str(mp3_path),
+        ]
         try:
-            req = urllib.request.Request(u, headers={
-                "User-Agent": _DOUYIN_MOBILE_UA,
-                "Referer": "https://www.iesdouyin.com/",
-            })
-            with urllib.request.urlopen(req, timeout=30) as r:
-                total = int(r.headers.get("Content-Length") or 0)
-                downloaded = 0
-                with open(mp4_path, "wb") as f:
-                    while True:
-                        if job.cancel_event.is_set():
-                            raise InterruptedError("cancelled")
-                        chunk = r.read(1 << 15)
-                        if not chunk:
-                            break
-                        f.write(chunk)
-                        downloaded += len(chunk)
-                        if total > 0:
-                            pct = downloaded * 100.0 / total
-                            job.progress = pct
-                            job.detail = f"{downloaded/1024/1024:.1f}MB / {total/1024/1024:.1f}MB"
-                            job.emit("progress", stage="download", progress=pct, detail=job.detail)
-            ok = True
-            break
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                                    stderr=subprocess.STDOUT, text=True, bufsize=1)
+        except Exception as e:
+            last_err = f"ffmpeg 启动失败: {e}"
+            job.log("warn", f"mirror {i+1}/{len(info['video_urls'])} {last_err}")
+            continue
+
+        tail_lines: list[str] = []  # 报错时回放
+        try:
+            for line in proc.stdout:
+                if job.cancel_event.is_set():
+                    proc.terminate()
+                    try: proc.wait(timeout=2)
+                    except Exception: proc.kill()
+                    raise InterruptedError("cancelled")
+                tail_lines.append(line.rstrip())
+                if len(tail_lines) > 20: tail_lines.pop(0)
+                m = time_re.search(line)
+                if m and duration_s > 0:
+                    hh, mm, ss, ms = m.groups()
+                    cur = int(hh)*3600 + int(mm)*60 + int(ss) + int(ms)/100.0
+                    pct = min(99.0, cur * 100.0 / duration_s)
+                    job.progress = pct
+                    job.detail = f"{cur:.0f}s / {duration_s}s"
+                    job.emit("progress", stage="download", progress=pct, detail=job.detail)
         except InterruptedError:
             raise
-        except Exception as e:
-            last_err = e
-            job.log("warn", f"mirror {i+1}/{len(info['video_urls'])} 失败：{str(e)[:120]}")
-            continue
-    if not ok:
-        raise RuntimeError(f"所有抖音 mirror 都下载失败：{last_err}")
+        proc.wait()
+        if proc.returncode == 0 and mp3_path.exists() and mp3_path.stat().st_size > 1024:
+            job.emit("progress", stage="download", progress=100)
+            return mp3_path
+        last_err = f"ffmpeg returncode={proc.returncode}; last: " + " | ".join(tail_lines[-3:])[:240]
+        job.log("warn", f"mirror {i+1}/{len(info['video_urls'])} 失败")
+        try: mp3_path.unlink()
+        except Exception: pass
 
-    # ffmpeg 提音频
-    mp3_path = CACHE_DIR / f"{job.id}.mp3"
-    job.emit("progress", stage="extract", progress=0)
-    proc = subprocess.run(
-        ["ffmpeg", "-y", "-i", str(mp4_path), "-vn", "-acodec", "libmp3lame",
-         "-q:a", "2", str(mp3_path)],
-        capture_output=True, text=True,
-    )
-    if proc.returncode != 0:
-        raise RuntimeError(f"ffmpeg 提音频失败: {proc.stderr[-200:]}")
-    try: mp4_path.unlink()
-    except Exception: pass
-    return mp3_path
+    raise RuntimeError(f"所有抖音 mirror 都下载失败：{last_err}")
 
 
 def _yt_dlp_download(job: Job, audio_path: Path) -> Path:
