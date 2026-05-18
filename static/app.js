@@ -1127,11 +1127,15 @@
               // 选完立即诊断该浏览器能否读到 cookies + 是否检测到登录态
               state.cookiesProbe = {browser: b.k, loading: true};
               render();
-              // 探测目标域名：B 站 URL 用 bilibili.com，YouTube 用 youtube.com，其他用 bilibili.com 做默认
+              // 探测目标域名：按 URL 选 — 抖音、B 站、YouTube、X、TikTok …
               const u = (state.url || "").toLowerCase();
-              const domain = u.includes("youtube") || u.includes("youtu.be") ? "youtube.com"
-                          : u.includes("twitter") || u.includes("x.com") ? "x.com"
-                          : "bilibili.com";
+              const domain =
+                  u.includes("douyin.com")                ? "douyin.com"
+                : u.includes("tiktok.com")                ? "tiktok.com"
+                : u.includes("youtube") || u.includes("youtu.be") ? "youtube.com"
+                : u.includes("twitter") || u.includes("x.com")    ? "x.com"
+                : u.includes("bilibili") || u.includes("b23.tv") ? "bilibili.com"
+                : "bilibili.com";  // 实在认不出就保留旧默认
               try {
                 const r = await api.cookiesProbe(b.k, domain);
                 state.cookiesProbe = {browser: b.k, domain, ...r, loading: false};

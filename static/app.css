@@ -1020,12 +1020,19 @@
 /* ============== Error states ============== */
 .err-pane {
   flex: 1;
-  display: flex; align-items: center; justify-content: center;
+  display: flex;
+  /* 短内容垂直居中，长内容从顶部开始 + 可滚动 */
+  align-items: flex-start;
+  justify-content: center;
   padding: 32px;
+  overflow-y: auto;
+  min-height: 0;
 }
 .err-card {
-  max-width: 380px;
+  max-width: 480px;       /* 之前 380px 太窄，长说明强制换行多 */
+  width: 100%;
   text-align: center;
+  margin: auto 0;         /* 短内容时仍接近竖直居中 */
 }
 .err-icon {
   width: 64px; height: 64px;
