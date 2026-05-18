@@ -31,6 +31,29 @@ from datetime import timedelta
 from pathlib import Path
 from typing import Optional
 
+# ────────────────────────────────────────────────────────────
+# PATH 修复 — 必须在 import httpx 之前，影响所有 subprocess。
+#
+# 当 server.py 被 .app 启动时（macOS Launch Services / WKWebView
+# 启动器），Python 进程拿到的 PATH 只有 /usr/bin:/bin:/usr/sbin:/sbin，
+# 不含 /opt/homebrew/bin（brew 装的 yt-dlp/ffmpeg）也不含 venv bin。
+# subprocess.run(["yt-dlp", ...]) 会 "[Errno 2] No such file or directory"。
+# 在这里把 brew + venv 路径加到 PATH 头部，下面所有 subprocess 都能找到。
+# ────────────────────────────────────────────────────────────
+import os
+from pathlib import Path as _PathBootstrap
+
+_extra_paths = [
+    str(_PathBootstrap(__file__).resolve().parent / ".venv" / "bin"),
+    "/opt/homebrew/bin",
+    "/opt/homebrew/sbin",
+    "/usr/local/bin",
+    "/usr/local/sbin",
+]
+_current = os.environ.get("PATH", "/usr/bin:/bin:/usr/sbin:/sbin")
+_kept = [p for p in _extra_paths if os.path.isdir(p) and p not in _current.split(":")]
+os.environ["PATH"] = ":".join(_kept + [_current])
+
 import httpx
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
