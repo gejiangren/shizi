@@ -19,6 +19,8 @@ from pathlib import Path
 
 import objc
 from Cocoa import (
+    NSAlert,
+    NSAlertFirstButtonReturn,
     NSApplication,
     NSApplicationActivationPolicyRegular,
     NSBackingStoreBuffered,
@@ -28,6 +30,7 @@ from Cocoa import (
     NSMenuItem,
     NSObject,
     NSScreen,
+    NSTextField,
     NSWindow,
     NSWindowStyleMaskClosable,
     NSWindowStyleMaskMiniaturizable,
@@ -109,6 +112,46 @@ class WindowDelegate(NSObject):
                 except Exception:
                     pass
         NSApp.terminate_(None)
+
+
+# WKWebView 默认对 JS 的 alert/confirm/prompt 不响应（静默返回），必须装
+# WKUIDelegate 把这些调用桥到原生 NSAlert，前端的 confirm("删除？") 才有窗弹。
+class WebUIDelegate(NSObject):
+    def webView_runJavaScriptAlertPanelWithMessage_initiatedByFrame_completionHandler_(
+        self, webView, message, frame, completionHandler
+    ):
+        alert = NSAlert.alloc().init()
+        alert.setMessageText_("拾字")
+        alert.setInformativeText_(message or "")
+        alert.addButtonWithTitle_("好")
+        alert.runModal()
+        completionHandler()
+
+    def webView_runJavaScriptConfirmPanelWithMessage_initiatedByFrame_completionHandler_(
+        self, webView, message, frame, completionHandler
+    ):
+        alert = NSAlert.alloc().init()
+        alert.setMessageText_("拾字")
+        alert.setInformativeText_(message or "")
+        alert.addButtonWithTitle_("确定")
+        alert.addButtonWithTitle_("取消")
+        response = alert.runModal()
+        completionHandler(response == NSAlertFirstButtonReturn)
+
+    def webView_runJavaScriptTextInputPanelWithPrompt_defaultText_initiatedByFrame_completionHandler_(
+        self, webView, prompt, defaultText, frame, completionHandler
+    ):
+        alert = NSAlert.alloc().init()
+        alert.setMessageText_("拾字")
+        alert.setInformativeText_(prompt or "")
+        field = NSTextField.alloc().initWithFrame_(NSMakeRect(0, 0, 280, 24))
+        if defaultText:
+            field.setStringValue_(defaultText)
+        alert.setAccessoryView_(field)
+        alert.addButtonWithTitle_("确定")
+        alert.addButtonWithTitle_("取消")
+        response = alert.runModal()
+        completionHandler(field.stringValue() if response == NSAlertFirstButtonReturn else None)
 
 
 def build_menu(app_name: str) -> NSMenu:
@@ -208,6 +251,10 @@ def main():
     webview = WKWebView.alloc().initWithFrame_configuration_(frame, config)
     webview.setAutoresizingMask_(2 | 16)  # NSViewWidthSizable | NSViewHeightSizable
 
+    # 把 JS 的 alert/confirm/prompt 桥到原生弹窗，否则 confirm() 永远返回 false
+    ui_delegate = WebUIDelegate.alloc().init()
+    webview.setUIDelegate_(ui_delegate)
+
     request = NSURLRequest.requestWithURL_(NSURL.URLWithString_(SERVER_URL + "/"))
     webview.loadRequest_(request)
 
@@ -215,6 +262,8 @@ def main():
 
     delegate = WindowDelegate.alloc().initWithServer_(server)
     window.setDelegate_(delegate)
+    # 保留 ui_delegate 引用防被 GC（webview 的 setUIDelegate_ 不 retain）
+    window._uiDelegate = ui_delegate
 
     window.makeKeyAndOrderFront_(None)
     app.activateIgnoringOtherApps_(True)
