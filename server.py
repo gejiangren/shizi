@@ -914,11 +914,10 @@ def _douyin_share_download(job: "Job", audio_path: Path) -> Path:
     mirrors = [re.sub(r"ratio=\d+p", "ratio=360p", u) for u in info["video_urls"]]
 
     for i, u in enumerate(mirrors):
-        # 让前端看到 mirror 切换 —— 否则切到 mirror 2 时 ffmpeg 在 connect 阶段
-        # 没 time= 输出，进度条留在 mirror 1 的状态像卡死。
-        job.detail = f"连接镜像 {i+1}/{len(mirrors)}…"
+        # 别给用户看 "mirror N/N"——他不需要懂 fallback host 的概念。
+        # 进度条 detail 改成统一文案，让用户感知"在连接"。
+        job.detail = "正在连接抖音 CDN…" if i == 0 else "尝试备用线路…"
         job.emit("progress", stage="download", progress=job.progress or 0, detail=job.detail)
-        job.log("inf", f"正在尝试 mirror {i+1}/{len(mirrors)}")
 
         # ffmpeg 当 downloader：HTTP 断流自动重连，输出端直接编码为 mp3
         cmd = [
@@ -941,7 +940,7 @@ def _douyin_share_download(job: "Job", audio_path: Path) -> Path:
                                     stderr=subprocess.STDOUT, text=True, bufsize=1)
         except Exception as e:
             last_err = f"ffmpeg 启动失败: {e}"
-            job.log("warn", f"mirror {i+1}/{len(mirrors)} {last_err}")
+            print(f"[douyin-dl] mirror {i+1}/{len(mirrors)} {last_err}")  # 只 stderr，不污染前端
             continue
 
         tail_lines: list[str] = []  # 报错时回放
@@ -969,11 +968,12 @@ def _douyin_share_download(job: "Job", audio_path: Path) -> Path:
             job.emit("progress", stage="download", progress=100)
             return mp3_path
         last_err = f"ffmpeg returncode={proc.returncode}; last: " + " | ".join(tail_lines[-3:])[:240]
-        job.log("warn", f"mirror {i+1}/{len(mirrors)} 失败")
+        print(f"[douyin-dl] mirror {i+1}/{len(mirrors)} failed: {last_err}")  # 只 stderr
         try: mp3_path.unlink()
         except Exception: pass
 
-    raise RuntimeError(f"所有抖音 mirror 都下载失败：{last_err}")
+    # 全部 mirror 都失败才报给用户
+    raise RuntimeError(f"抖音视频下载失败：{last_err}")
 
 
 def _yt_dlp_download(job: Job, audio_path: Path) -> Path:
@@ -1166,7 +1166,10 @@ def run_pipeline(job: Job):
                  elapsed_seconds=job.elapsed_seconds,
                  words=len(job.full_text),
                  segments_count=len(job.segments),
-                 file_base=str(file_base.name))
+                 file_base=str(file_base.name),
+                 # 把完整文本塞进 done payload，前端 renderComplete 直接读，
+                 # 否则页面会看着像"完成了但没文字"，得退到历史记录再点。
+                 full_text=job.full_text)
         job.log("ok", f"完成 · 耗时 {job.elapsed_seconds:.1f}s · {len(job.full_text)} 字 · {len(job.segments)} 段")
 
         try:

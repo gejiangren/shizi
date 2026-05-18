@@ -3345,6 +3345,13 @@
 
   async function handleStart() {
     if (!state.url) return;
+    // 如果用户直接键入 URL（没经过 paste 自动 probe），先 probe 一次拿到
+    // title/duration 再启动 job，否则用户体验是"点一次按钮没反应、点两次才动"。
+    if (!state.probe && state.flow !== "filled" && state.flow !== "downloading") {
+      await handleProbe();
+      // probe 之后 flow 可能切到 err-login / err-invalid，那就不继续
+      if (state.flow !== "filled") return;
+    }
     try {
       const r = await api.createJob({
         url: state.url,
