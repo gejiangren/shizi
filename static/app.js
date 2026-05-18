@@ -2827,8 +2827,25 @@
     } catch { return String(err); }
   }
 
+  // 从一段乱七八糟的文本里抠第一条 http(s):// URL。
+  // 用户常常直接粘 App "复制链接"那一坨："6.97 复制打开抖音，看看【X】... https://v.douyin.com/abc/ R@K.jP ..."
+  function _extractFirstUrl(s) {
+    if (!s) return s;
+    const t = s.trim();
+    if (/^https?:\/\//.test(t)) return t;
+    const m = t.match(/https?:\/\/[^\s一-鿿]+/);
+    if (!m) return t;
+    return m[0].replace(/[.,;:!?，。、；：！？)）】」』\])>]+$/, "");
+  }
+
   async function handleProbe() {
     if (!state.url || !state.url.trim()) return;
+    // 自动抠 URL：粘进来的整段分享文案 → 干净的 http 链接
+    const _cleaned = _extractFirstUrl(state.url);
+    if (_cleaned !== state.url) {
+      state.url = _cleaned;
+      render();
+    }
     if (state.mode === "download") {
       try {
         state.dl.probe = null;

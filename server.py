@@ -426,6 +426,8 @@ JOBS: dict[str, Job] = {}
 def normalize_url(url: str) -> str:
     """规整一些"分享时变形"的 URL，让 yt-dlp 能正确识别。
 
+    - 用户常常直接粘 App "复制链接"出来的整段文案（含中文表情、口令码），
+      从里面抠出第一条 http(s):// 链接即可。
     - 抖音「在用户页弹窗里看视频」会得到 /user/self?modal_id=<vid>，
       需要改写成 /video/<vid> yt-dlp 才能认出。
     - B 站短链 b23.tv 由 yt-dlp 自己处理，这里不动。
@@ -434,6 +436,13 @@ def normalize_url(url: str) -> str:
     if not url:
         return url
     s = url.strip()
+    # 从分享文案里抠 URL：用户粘进来的可能是
+    # "6.97 复制打开抖音，看看【...】... https://v.douyin.com/abc/ R@K.jP ..."
+    # 抓第一条 http(s)://，并去掉末尾的标点 / 中文符号。
+    if not re.match(r"^https?://", s):
+        m = re.search(r"https?://[^\s一-鿿]+", s)
+        if m:
+            s = m.group(0).rstrip(".,;:!?，。、；：！？)）】」』])>")
     # 抖音 modal_id
     if "douyin.com" in s.lower():
         m = re.search(r"[?&]modal_id=(\d+)", s)
