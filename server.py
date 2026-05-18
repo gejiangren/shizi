@@ -25,6 +25,7 @@ import sqlite3
 import subprocess
 import threading
 import time
+import urllib.request
 import uuid
 from contextlib import asynccontextmanager
 from datetime import timedelta
@@ -451,6 +452,82 @@ def normalize_url(url: str) -> str:
     return s
 
 
+# ============================================================
+# 抖音 fallback：yt-dlp 抖音 extractor 当前缺 web _signature 计算，
+# 直接走抖音官方 share 页（手机端 UA）拿元数据 + mp4 直链。
+# ============================================================
+_DOUYIN_VIDEO_ID_RE = re.compile(r"douyin\.com/(?:video|share/video)/(\d+)")
+_DOUYIN_MOBILE_UA = (
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) "
+    "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
+)
+
+def _douyin_extract_video_id(url: str) -> Optional[str]:
+    """从抖音 URL 抽视频 ID。短链先跟随重定向。"""
+    if not url:
+        return None
+    m = _DOUYIN_VIDEO_ID_RE.search(url)
+    if m:
+        return m.group(1)
+    if "v.douyin.com" in url:
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": _DOUYIN_MOBILE_UA})
+            with urllib.request.urlopen(req, timeout=10) as r:
+                m = _DOUYIN_VIDEO_ID_RE.search(r.geturl())
+                if m:
+                    return m.group(1)
+        except Exception as e:
+            print(f"[douyin] short-link resolve failed: {e}")
+    return None
+
+
+def _douyin_share_resolve(url: str) -> Optional[dict]:
+    """走抖音 share 页拿元数据 + mp4 直链。yt-dlp 抓不到时 fallback 用。
+
+    返回 {title, duration_s, video_id, video_urls (list[str]), thumbnail, uploader}
+    或 None。不需要登录、不需要 cookies。
+    """
+    vid = _douyin_extract_video_id(url)
+    if not vid:
+        return None
+    try:
+        req = urllib.request.Request(
+            f"https://www.iesdouyin.com/share/video/{vid}/",
+            headers={"User-Agent": _DOUYIN_MOBILE_UA},
+        )
+        with urllib.request.urlopen(req, timeout=15) as r:
+            html = r.read().decode("utf-8", errors="replace")
+    except Exception as e:
+        print(f"[douyin-share] HTTP error: {e}")
+        return None
+    # window._ROUTER_DATA = { ... } 紧接 </script>
+    m = re.search(r"window\._ROUTER_DATA\s*=\s*(\{.*?\})\s*</script>", html, re.DOTALL)
+    if not m:
+        print("[douyin-share] _ROUTER_DATA not found in HTML")
+        return None
+    try:
+        data = json.loads(m.group(1))
+        page = data.get("loaderData", {}).get("video_(id)/page", {})
+        item = (page.get("videoInfoRes", {}).get("item_list") or [None])[0]
+        if not item:
+            return None
+        play = (item.get("video") or {}).get("play_addr") or {}
+        urls = play.get("url_list") or []
+        if not urls:
+            return None
+        return {
+            "title": item.get("desc") or "抖音视频",
+            "duration_s": int((item.get("video") or {}).get("duration", 0) // 1000),
+            "video_id": vid,
+            "video_urls": urls,
+            "thumbnail": ((item.get("video") or {}).get("cover") or {}).get("url_list", [None])[0],
+            "uploader": (item.get("author") or {}).get("nickname"),
+        }
+    except Exception as e:
+        print(f"[douyin-share] parse error: {e}")
+        return None
+
+
 def classify_non_video_url(url: str) -> Optional[dict]:
     """识别"不是单个视频"的 URL。返回 {msg, scannable, type} 或 None。
     scannable=True 表示可以 --flat-playlist 列出视频供挑选。"""
@@ -734,6 +811,21 @@ def probe_video(url: str, cookies_browser: Optional[str] = None) -> dict:
             "scannable": bad.get("scannable", False), "type": bad.get("type"),
         }))
 
+    # 抖音直接走 fallback：yt-dlp 抖音 extractor 当前抓不动，省 30s 等 timeout
+    if "douyin.com" in url.lower():
+        fb = _douyin_share_resolve(url)
+        if fb:
+            return {
+                "title": fb["title"],
+                "duration": fb["duration_s"],
+                "video_id": fb["video_id"],
+                "thumbnail": fb["thumbnail"],
+                "uploader": fb["uploader"],
+                "is_collection": False,
+                "parts": [],
+            }
+        # fallback 也失败：继续走 yt-dlp 尝试（兜底）
+
     cmd = ["yt-dlp", "-J", "--no-warnings", "--no-playlist"]
     if cookies_browser:
         cmd += ["--cookies-from-browser", cookies_browser]
@@ -743,9 +835,8 @@ def probe_video(url: str, cookies_browser: Optional[str] = None) -> dict:
         err = proc.stderr or ""
         kind = "other"
         low = err.lower()
-        # 抖音 / TikTok yt-dlp 抓不动："Fresh cookies needed" —— 实际是上游 extractor
-        # 缺 _signature 计算，不是 cookies 问题。提示用户走本地文件路径。
-        if "fresh cookies" in low and ("douyin" in low or "tiktok" in low):
+        # TikTok 卡 fresh cookies（没找到等价 fallback 接口）→ platform_limited
+        if "fresh cookies" in low and "tiktok" in low:
             kind = "platform_limited"
         elif ("412" in low or "352" in low or "509" in low
                 or "blocked by server" in low or "rejected by server" in low
@@ -784,8 +875,73 @@ def probe_video(url: str, cookies_browser: Optional[str] = None) -> dict:
 # ============================================================
 import mlx_whisper  # lazy-import? -> import here cost ~2s. Keep at module top? actually here is fine.
 
+def _douyin_share_download(job: "Job", audio_path: Path) -> Path:
+    """抖音 fallback：iesdouyin share 接口拿直链 → urllib 下载 mp4 → ffmpeg 提音频。
+    yt-dlp 抖音 extractor 抓不动时走这条路。"""
+    job.emit("progress", stage="download", progress=0)
+    info = _douyin_share_resolve(job.url)
+    if not info:
+        raise RuntimeError("抖音解析失败：未能从 share 页提取视频地址")
+    job.log("inf", f"抖音直链就绪：{info['title'][:40]} ({info['duration_s']}s)")
+
+    mp4_path = CACHE_DIR / f"{job.id}.mp4"
+    last_err: Optional[Exception] = None
+    ok = False
+    for i, u in enumerate(info["video_urls"]):
+        try:
+            req = urllib.request.Request(u, headers={
+                "User-Agent": _DOUYIN_MOBILE_UA,
+                "Referer": "https://www.iesdouyin.com/",
+            })
+            with urllib.request.urlopen(req, timeout=30) as r:
+                total = int(r.headers.get("Content-Length") or 0)
+                downloaded = 0
+                with open(mp4_path, "wb") as f:
+                    while True:
+                        if job.cancel_event.is_set():
+                            raise InterruptedError("cancelled")
+                        chunk = r.read(1 << 15)
+                        if not chunk:
+                            break
+                        f.write(chunk)
+                        downloaded += len(chunk)
+                        if total > 0:
+                            pct = downloaded * 100.0 / total
+                            job.progress = pct
+                            job.detail = f"{downloaded/1024/1024:.1f}MB / {total/1024/1024:.1f}MB"
+                            job.emit("progress", stage="download", progress=pct, detail=job.detail)
+            ok = True
+            break
+        except InterruptedError:
+            raise
+        except Exception as e:
+            last_err = e
+            job.log("warn", f"mirror {i+1}/{len(info['video_urls'])} 失败：{str(e)[:120]}")
+            continue
+    if not ok:
+        raise RuntimeError(f"所有抖音 mirror 都下载失败：{last_err}")
+
+    # ffmpeg 提音频
+    mp3_path = CACHE_DIR / f"{job.id}.mp3"
+    job.emit("progress", stage="extract", progress=0)
+    proc = subprocess.run(
+        ["ffmpeg", "-y", "-i", str(mp4_path), "-vn", "-acodec", "libmp3lame",
+         "-q:a", "2", str(mp3_path)],
+        capture_output=True, text=True,
+    )
+    if proc.returncode != 0:
+        raise RuntimeError(f"ffmpeg 提音频失败: {proc.stderr[-200:]}")
+    try: mp4_path.unlink()
+    except Exception: pass
+    return mp3_path
+
+
 def _yt_dlp_download(job: Job, audio_path: Path) -> Path:
     """Download audio (+convert to mp3). Streams progress to job."""
+    # 抖音走 fallback：yt-dlp douyin extractor 当前抓不动单视频
+    if job.url and "douyin.com" in job.url.lower():
+        return _douyin_share_download(job, audio_path)
+
     cmd = [
         "yt-dlp", "-x", "--audio-format", "mp3", "--audio-quality", "0",
         "-o", str(CACHE_DIR / f"{job.id}.%(ext)s"),
