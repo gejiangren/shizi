@@ -1210,10 +1210,12 @@ def api_probe(req: ProbeReq):
         raise HTTPException(status_code=400, detail={"kind": kind, "msg": msg[:300], **extra})
 
 @app.post("/api/jobs")
-def api_create_job(req: JobReq, request: Request):
+async def api_create_job(req: JobReq, request: Request):
+    # Python 3.14 起 asyncio.get_event_loop() 在 worker thread 里不再自动创建
+    # loop，必须用 async def 端点 + get_running_loop()。
     job = Job(url=req.url, model=req.model, lang=req.lang, fmt=req.fmt,
               advanced=req.advanced, local_file=req.local_file)
-    job.main_loop = asyncio.get_event_loop()
+    job.main_loop = asyncio.get_running_loop()
     JOBS[job.id] = job
     thread = threading.Thread(target=run_pipeline, args=(job,), daemon=True)
     thread.start()
@@ -1364,11 +1366,11 @@ def run_batch(b: BatchJob):
     b.emit(type="batch_end")
 
 @app.post("/api/batch")
-def api_batch(req: BatchReq):
+async def api_batch(req: BatchReq):
     if not req.urls:
         raise HTTPException(400, "no urls")
     b = BatchJob(req.urls, req.model, req.lang, req.fmt, req.advanced)
-    b.main_loop = asyncio.get_event_loop()
+    b.main_loop = asyncio.get_running_loop()
     BATCHES[b.id] = b
     threading.Thread(target=run_batch, args=(b,), daemon=True).start()
     return {"batch_id": b.id, "job_ids": [j.id for j in b.items]}
@@ -2047,12 +2049,13 @@ class DLBatchReq(BaseModel):
     cookies_browser: Optional[str] = None
 
 @app.post("/api/dl/batch")
-def api_dl_batch(req: DLBatchReq):
+async def api_dl_batch(req: DLBatchReq):
     """批量下载：根据 height_max 让 yt-dlp 自挑各视频可用的最佳画质。"""
     if not req.urls:
         raise HTTPException(400, "no urls")
     hmax = int(req.height_max or 1080)
     fmt_spec = f"bv*[height<={hmax}]+ba/b[height<={hmax}]/best"
+    loop = asyncio.get_running_loop()
     jobs = []
     for u in req.urls:
         j = DownloadJob(
@@ -2064,7 +2067,7 @@ def api_dl_batch(req: DLBatchReq):
             extras=req.extras,
             cookies_browser=req.cookies_browser,
         )
-        j.main_loop = asyncio.get_event_loop()
+        j.main_loop = loop
         DL_JOBS[j.id] = j
         jobs.append(j)
 
@@ -2076,14 +2079,14 @@ def api_dl_batch(req: DLBatchReq):
     return {"job_ids": [j.id for j in jobs]}
 
 @app.post("/api/dl/jobs")
-def api_dl_create(req: DLJobReq):
+async def api_dl_create(req: DLJobReq):
     j = DownloadJob(url=req.url, format_id=req.format_id,
                     audio_format_id=req.audio_format_id,
                     save_dir=req.save_dir,
                     name_template=req.name_template,
                     extras=req.extras,
                     cookies_browser=req.cookies_browser)
-    j.main_loop = asyncio.get_event_loop()
+    j.main_loop = asyncio.get_running_loop()
     DL_JOBS[j.id] = j
     threading.Thread(target=run_download, args=(j,), daemon=True).start()
     return {"job_id": j.id}
