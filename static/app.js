@@ -1023,7 +1023,21 @@
 
     // Per-kind 文案
     let title, iconName, suggestHtml, primaryBtn;
-    if (kind === "not_video") {
+    if (kind === "platform_limited") {
+      const u = (state.url || "").toLowerCase();
+      const platform = u.includes("douyin") ? "抖音" : u.includes("tiktok") ? "TikTok" : "该平台";
+      title = `${platform} 抓取受限`;
+      iconName = "Alert";
+      suggestHtml = `<b>不是你的问题。</b>${platform} 的 web 反爬升级，yt-dlp 当前的 extractor 抓不到视频源（缺 web signature 计算）。<br/><br/>
+                     <b>解决：把视频下到本地，用「本地文件」转录</b><br/>
+                     · 手机抖音 App：分享 → 保存到相册 → AirDrop / 微信传到 Mac<br/>
+                     · 网页端：用浏览器开发者工具看 video 元素的 src，右键 → 视频另存为<br/>
+                     · 第三方工具：tikmate.online / snaptik.app / 抖音解析等`;
+      primaryBtn = h("button", {class:"btn-primary",
+        style:{width:"auto", padding:"0 18px", height:"36px", fontSize:"13px", boxShadow:"none"},
+        onClick: handleLocalFilePick
+      }, icon("Upload",{size:14}), "选本地文件");
+    } else if (kind === "not_video") {
       const typeLabel = urlType === "channel" ? "主页"
                       : urlType === "playlist" ? "播放列表"
                       : urlType === "live" ? "直播间"

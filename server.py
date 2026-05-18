@@ -743,7 +743,11 @@ def probe_video(url: str, cookies_browser: Optional[str] = None) -> dict:
         err = proc.stderr or ""
         kind = "other"
         low = err.lower()
-        if ("412" in low or "352" in low or "509" in low
+        # 抖音 / TikTok yt-dlp 抓不动："Fresh cookies needed" —— 实际是上游 extractor
+        # 缺 _signature 计算，不是 cookies 问题。提示用户走本地文件路径。
+        if "fresh cookies" in low and ("douyin" in low or "tiktok" in low):
+            kind = "platform_limited"
+        elif ("412" in low or "352" in low or "509" in low
                 or "blocked by server" in low or "rejected by server" in low
                 or "rate" in low and "limit" in low):
             kind = "rate_limited"
