@@ -162,10 +162,10 @@
   // API client
   // ============================================================
   const api = {
-    async probe(url) {
+    async probe(url, cookies_browser) {
       const r = await fetch("/api/probe", {
         method: "POST", headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({url})
+        body: JSON.stringify({url, cookies_browser: cookies_browser || null})
       });
       if (!r.ok) {
         const err = await r.json().catch(() => ({}));
@@ -2871,7 +2871,7 @@
     }
     try {
       state.probe = null;
-      const info = await api.probe(state.url.trim());
+      const info = await api.probe(state.url.trim(), state.advanced?.cookiesBrowser);
       state.probe = info;
       if (info.is_collection && info.parts && info.parts.length > 0) {
         state.flow = "collection";

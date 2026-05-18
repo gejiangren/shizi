@@ -720,8 +720,12 @@ def probe_channel(url: str, cookies_browser: Optional[str] = None, limit: int = 
     }
 
 
-def probe_video(url: str) -> dict:
-    """Return {title, duration, video_id, thumbnail, is_collection, parts}."""
+def probe_video(url: str, cookies_browser: Optional[str] = None) -> dict:
+    """Return {title, duration, video_id, thumbnail, is_collection, parts}.
+
+    cookies_browser: chrome/safari/firefox/edge/... 让 yt-dlp 用对应浏览器的
+    cookies 抓元数据。抖音 / 小红书 / 部分 B 站会员视频不带 cookies 直接 403。
+    """
     url = normalize_url(url)
     bad = classify_non_video_url(url)
     if bad:
@@ -730,8 +734,10 @@ def probe_video(url: str) -> dict:
             "scannable": bad.get("scannable", False), "type": bad.get("type"),
         }))
 
-    cookies_browser = None  # client may pass advanced.cookies_from
-    cmd = ["yt-dlp", "-J", "--no-warnings", "--no-playlist", url]
+    cmd = ["yt-dlp", "-J", "--no-warnings", "--no-playlist"]
+    if cookies_browser:
+        cmd += ["--cookies-from-browser", cookies_browser]
+    cmd.append(url)
     proc = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
     if proc.returncode != 0:
         err = proc.stderr or ""
@@ -856,7 +862,7 @@ def run_pipeline(job: Job):
             job.emit("status", status=job.status, stage=job.stage, progress=0)
             job.log("inf", f"开始处理 {job.url}")
             try:
-                info = probe_video(job.url)
+                info = probe_video(job.url, job.advanced.get("cookies_browser") or job.advanced.get("cookiesBrowser"))
                 job.title = info.get("title") or "(无标题)"
                 job.duration = info.get("duration")
                 job.video_id = info.get("video_id")
@@ -1025,7 +1031,7 @@ class BatchReq(BaseModel):
 @app.post("/api/probe")
 def api_probe(req: ProbeReq):
     try:
-        info = probe_video(req.url)
+        info = probe_video(req.url, req.cookies_browser)
         info["platform"] = detect_platform(req.url)
         return info
     except Exception as e:
@@ -1670,7 +1676,7 @@ def run_download(job: DownloadJob):
         job.platform = detect_platform(job.url)
         # Probe for meta (best-effort)
         try:
-            info = probe_video(job.url)
+            info = probe_video(job.url, job.cookies_browser)
             job.title = info.get("title")
             job.duration = info.get("duration")
             job.video_id = info.get("video_id")
