@@ -914,14 +914,22 @@ def _douyin_share_download(job: "Job", audio_path: Path) -> Path:
     mirrors = [re.sub(r"ratio=\d+p", "ratio=360p", u) for u in info["video_urls"]]
 
     for i, u in enumerate(mirrors):
+        # 让前端看到 mirror 切换 —— 否则切到 mirror 2 时 ffmpeg 在 connect 阶段
+        # 没 time= 输出，进度条留在 mirror 1 的状态像卡死。
+        job.detail = f"连接镜像 {i+1}/{len(mirrors)}…"
+        job.emit("progress", stage="download", progress=job.progress or 0, detail=job.detail)
+        job.log("inf", f"正在尝试 mirror {i+1}/{len(mirrors)}")
+
         # ffmpeg 当 downloader：HTTP 断流自动重连，输出端直接编码为 mp3
         cmd = [
             "ffmpeg", "-y", "-hide_banner", "-loglevel", "info",
+            "-rw_timeout", "15000000",            # 15s socket 读写超时
             "-reconnect", "1",
             "-reconnect_at_eof", "1",
             "-reconnect_streamed", "1",
             "-reconnect_on_network_error", "1",
             "-reconnect_delay_max", "5",
+            "-reconnect_max_retries", "8",        # 不再无限重试
             "-user_agent", _DOUYIN_MOBILE_UA,
             "-headers", "Referer: https://www.iesdouyin.com/\r\n",
             "-i", u,
