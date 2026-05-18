@@ -45,6 +45,10 @@ PROJECT_DIR = Path(__file__).resolve().parent.parent
 SERVER_URL = "http://127.0.0.1:7860"
 SERVER_LOG = Path("/tmp/shizi.log")
 
+# NSObject subclass 实例（delegate 们）必须保留 Python 端引用，
+# 否则 PyObjC 桥接的 Python 包装被 GC 后，对应的回调就 nil 不再触发。
+_RETAIN: list = []
+
 
 # ────────────────────────────────────────────────────────────
 # 后台启动 server.py
@@ -251,9 +255,12 @@ def main():
     webview = WKWebView.alloc().initWithFrame_configuration_(frame, config)
     webview.setAutoresizingMask_(2 | 16)  # NSViewWidthSizable | NSViewHeightSizable
 
-    # 把 JS 的 alert/confirm/prompt 桥到原生弹窗，否则 confirm() 永远返回 false
+    # 把 JS 的 alert/confirm/prompt 桥到原生弹窗，否则 confirm() 永远返回 false。
+    # setUIDelegate_ 不 retain，所以把引用塞进全局 list 防 GC（NSWindow 是
+    # Obj-C 对象不能 setattr）。
     ui_delegate = WebUIDelegate.alloc().init()
     webview.setUIDelegate_(ui_delegate)
+    _RETAIN.append(ui_delegate)
 
     request = NSURLRequest.requestWithURL_(NSURL.URLWithString_(SERVER_URL + "/"))
     webview.loadRequest_(request)
@@ -262,8 +269,7 @@ def main():
 
     delegate = WindowDelegate.alloc().initWithServer_(server)
     window.setDelegate_(delegate)
-    # 保留 ui_delegate 引用防被 GC（webview 的 setUIDelegate_ 不 retain）
-    window._uiDelegate = ui_delegate
+    _RETAIN.append(delegate)
 
     window.makeKeyAndOrderFront_(None)
     app.activateIgnoringOtherApps_(True)
