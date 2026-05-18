@@ -145,6 +145,18 @@ def build_menu(app_name: str) -> NSMenu:
         edit_menu.addItem_(item)
     edit_item.setSubmenu_(edit_menu)
 
+    # 显示 菜单（让 Cmd+R 重新加载页面、Cmd+Shift+R 绕过缓存）
+    view_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("显示", None, "")
+    main.addItem_(view_item)
+    view_menu = NSMenu.alloc().initWithTitle_("显示")
+    for title, sel, key in [
+        ("重新载入", "reload:", "r"),
+        ("强制重新载入（清缓存）", "reloadFromOrigin:", "R"),
+    ]:
+        item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(title, sel, key)
+        view_menu.addItem_(item)
+    view_item.setSubmenu_(view_menu)
+
     # 窗口 菜单
     win_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_("窗口", None, "")
     main.addItem_(win_item)
