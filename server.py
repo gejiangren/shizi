@@ -467,6 +467,10 @@ def classify_non_video_url(url: str) -> Optional[dict]:
     if "tiktok.com/@" in u and "/video/" not in u:
         return {"msg": "这是 TikTok 用户主页。可以扫描该用户的视频列表，挑选批量处理。",
                 "scannable": True, "type": "channel"}
+    # 抖音个人主页（含 /user/self / /user/MS4...）。yt-dlp 对抖音 channel 支持不稳，先不开扫描。
+    if re.search(r"douyin\.com/user/", u):
+        return {"msg": "这是抖音用户主页，本工具暂不支持扫描整个用户的视频。请在抖音里打开单个视频后复制其链接（形如 douyin.com/video/<id>）再来转录。",
+                "scannable": False, "type": "channel"}
     return None
 
 
@@ -1963,23 +1967,32 @@ class CookiesProbeReq(BaseModel):
     browser: str
     domain: str = "bilibili.com"
 
+# 各平台"登录态"关键 cookie。比较前一律 .lower() —— 抖音/TikTok 习惯小写，
+# B 站 / Google 习惯大写或混合。命中任一即认为已登录。
+_PLATFORM_LOGIN_KEYS: dict[str, set[str]] = {
+    "bilibili.com": {"sessdata", "dedeuserid", "bili_jct", "buvid3"},
+    "youtube.com":  {"sapisid", "sid", "hsid", "ssid", "apisid", "__secure-3psid", "login_info"},
+    "douyin.com":   {"sessionid", "sessionid_ss", "sid_tt", "passport_csrf_token", "uid_tt"},
+    "tiktok.com":   {"sessionid", "sid_tt", "tt_webid", "sid_guard"},
+    "x.com":        {"auth_token", "ct0"},
+    "twitter.com":  {"auth_token", "ct0"},
+}
+
 @app.post("/api/cookies/probe")
 def api_cookies_probe(req: CookiesProbeReq):
     """诊断指定浏览器能不能读到该域名的 cookies。"""
     try:
         cookies = _read_browser_cookies(req.browser, req.domain)
         keys = sorted(cookies.keys())
-        # 关键 key：B 站 SESSDATA，YouTube SAPISID/SID 等
-        important = []
-        for k in keys:
-            if k.upper() in ("SESSDATA", "DEDEUSERID", "BILI_JCT", "BUVID3", "SID", "SAPISID", "AUTH_TOKEN", "AUTH_TOKEN", "LOGIN_INFO"):
-                important.append(k)
+        login_keys = _PLATFORM_LOGIN_KEYS.get(req.domain.lower(), set())
+        important = [k for k in keys if k.lower() in login_keys]
         return {
             "ok": bool(cookies),
             "count": len(keys),
             "keys": keys[:20],
             "important_keys": important,
             "has_login": bool(important),
+            "domain": req.domain,
         }
     except Exception as e:
         return {"ok": False, "error": str(e)[:300]}

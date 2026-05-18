@@ -1200,7 +1200,7 @@
               h("b", {}, "✓ 已检测到登录态 "), `(${cp.count} 个 cookies，含 ${cp.important_keys.join(", ")})`);
           }
           return h("div", {class:"err-tip", style:{marginTop:8, background:"rgba(241,162,63,0.10)", borderLeftColor:"var(--ranepa-orange)"}},
-            h("b", {}, "⚠ 读到 cookies 但没找到登录态 "), `(${cp.count} 个，但没有 SESSDATA / SAPISID 等关键 key)`,
+            h("b", {}, "⚠ 读到 cookies 但没找到登录态 "), `(共 ${cp.count} 个 cookies)`,
             h("div", {style:{marginTop:6, fontSize:11, color:"var(--fg-3)"}},
               `请先在 ${BROWSERS.find(b=>b.k===picked)?.l} 里用账号登录 ${cp.domain}，登录成功后再点这里重试。`),
           );
