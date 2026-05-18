@@ -400,6 +400,25 @@ JOBS: dict[str, Job] = {}
 # ============================================================
 # yt-dlp probe (video metadata)
 # ============================================================
+def normalize_url(url: str) -> str:
+    """规整一些"分享时变形"的 URL，让 yt-dlp 能正确识别。
+
+    - 抖音「在用户页弹窗里看视频」会得到 /user/self?modal_id=<vid>，
+      需要改写成 /video/<vid> yt-dlp 才能认出。
+    - B 站短链 b23.tv 由 yt-dlp 自己处理，这里不动。
+    - YouTube 移动端 youtu.be 由 yt-dlp 自己处理，这里不动。
+    """
+    if not url:
+        return url
+    s = url.strip()
+    # 抖音 modal_id
+    if "douyin.com" in s.lower():
+        m = re.search(r"[?&]modal_id=(\d+)", s)
+        if m:
+            return f"https://www.douyin.com/video/{m.group(1)}"
+    return s
+
+
 def classify_non_video_url(url: str) -> Optional[dict]:
     """识别"不是单个视频"的 URL。返回 {msg, scannable, type} 或 None。
     scannable=True 表示可以 --flat-playlist 列出视频供挑选。"""
@@ -667,6 +686,7 @@ def probe_channel(url: str, cookies_browser: Optional[str] = None, limit: int = 
 
 def probe_video(url: str) -> dict:
     """Return {title, duration, video_id, thumbnail, is_collection, parts}."""
+    url = normalize_url(url)
     bad = classify_non_video_url(url)
     if bad:
         raise RuntimeError(json.dumps({
@@ -771,6 +791,9 @@ def run_pipeline(job: Job):
     """Synchronous pipeline (runs in background thread)."""
     t_start = time.time()
     try:
+        # 规整 URL（处理抖音 modal_id 这类 yt-dlp 不认的格式）
+        if job.url:
+            job.url = normalize_url(job.url)
         job.platform = detect_platform(job.url) if job.url else None
 
         # ---- 跨链路复用：已有本地文件，跳过下载 ----
@@ -1416,6 +1439,7 @@ async def api_upload(file: UploadFile = File(...)):
 # ============================================================
 def probe_formats(url: str, cookies_browser: Optional[str] = None) -> dict:
     """yt-dlp -J 探测 + 按画质档归类。返回 {meta, tiers, audio}."""
+    url = normalize_url(url)
     bad = classify_non_video_url(url)
     if bad:
         raise RuntimeError(json.dumps({
@@ -1604,6 +1628,9 @@ def _yt_template(simple: str) -> str:
 def run_download(job: DownloadJob):
     t_start = time.time()
     try:
+        # 规整 URL（处理抖音 modal_id 这类 yt-dlp 不认的格式）
+        if job.url:
+            job.url = normalize_url(job.url)
         job.platform = detect_platform(job.url)
         # Probe for meta (best-effort)
         try:

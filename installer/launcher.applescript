@@ -46,8 +46,13 @@ on run
     end repeat
 
     if ready then
-        do shell script "open http://127.0.0.1:7860"
-        display notification "已启动 · http://127.0.0.1:7860" with title "拾字 Voicetype Studio"
+        -- 强行让默认浏览器抢前台
+        do shell script "open -a 'Safari' http://127.0.0.1:7860 2>/dev/null || open http://127.0.0.1:7860"
+        delay 0.3
+        try
+            tell application "Safari" to activate
+        end try
+        display notification "拾字已就绪 · 浏览器已打开 127.0.0.1:7860" with title "拾字 Voicetype Studio" sound name "Glass"
     else
         display dialog "启动超时 30 秒未就绪。" & return & return & ¬
             "请打开 终端 跑：" & return & "cat /tmp/shizi.log" & return & "查看日志告诉开发者。" ¬

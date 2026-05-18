@@ -1,0 +1,20 @@
+#!/bin/bash
+# 拾字 · Voicetype Studio
+# .app 入口：用项目 venv 跑 gui_launcher.py
+
+# 找项目根目录（默认 ~/Projects/shizi）
+PROJECT="$HOME/Projects/shizi"
+if [ ! -f "$PROJECT/server.py" ]; then
+  osascript -e 'display dialog "找不到拾字项目目录！\n\n请先把项目克隆到 ~/Projects/shizi/，然后运行 setup.sh。" buttons {"打开 GitHub", "OK"} default button "打开 GitHub" with title "拾字"' \
+            -e 'if button returned of result is "打开 GitHub" then do shell script "open https://github.com/gejiangren/shizi"'
+  exit 1
+fi
+
+VENV_PY="$PROJECT/.venv/bin/python"
+if [ ! -x "$VENV_PY" ]; then
+  osascript -e 'display dialog "拾字未安装完整！请先运行 setup.sh 装好 Python 环境。" buttons {"OK"} default button "OK" with title "拾字"'
+  exit 1
+fi
+
+# 直接 exec 进 gui_launcher.py（不 fork，让 .app 进程就是 Python 进程）
+exec "$VENV_PY" "$PROJECT/installer/gui_launcher.py"
