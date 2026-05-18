@@ -1101,6 +1101,35 @@
     const isRateLimit = kind === "rate_limited";
     const rawError = state.job?.error || "";
     const title = isRateLimit ? "平台暂时拒绝了请求" : "这个视频需要登录";
+
+    // 自动按当前 URL 域名 + 持久化浏览器跑一次 cookies 诊断
+    const _u = (state.url || "").toLowerCase();
+    const _wantedDomain =
+        _u.includes("douyin.com")                ? "douyin.com"
+      : _u.includes("tiktok.com")                ? "tiktok.com"
+      : _u.includes("youtube") || _u.includes("youtu.be") ? "youtube.com"
+      : _u.includes("twitter") || _u.includes("x.com")    ? "x.com"
+      : _u.includes("bilibili") || _u.includes("b23.tv") ? "bilibili.com"
+      : "bilibili.com";
+    const _cached =
+      state.cookiesProbe
+      && state.cookiesProbe.browser === picked
+      && state.cookiesProbe.domain === _wantedDomain;
+    if (picked && !_cached && !state._cookiesProbing) {
+      state._cookiesProbing = true;
+      setTimeout(async () => {
+        state.cookiesProbe = {browser: picked, domain: _wantedDomain, loading: true};
+        render();
+        try {
+          const r = await api.cookiesProbe(picked, _wantedDomain);
+          state.cookiesProbe = {browser: picked, domain: _wantedDomain, ...r, loading: false};
+        } catch (e) {
+          state.cookiesProbe = {browser: picked, domain: _wantedDomain, ok: false, error: _readableError(e), loading: false};
+        }
+        state._cookiesProbing = false;
+        render();
+      }, 0);
+    }
     const desc = isRateLimit
       ? `平台触发了反爬虫风控（HTTP 412）。常见解法是用<b>已登录该站点的浏览器</b>导入 Cookies 绕过。`
       : `平台返回需要登录或会员才能访问。从浏览器导入登录态后就能用了，全程在本地完成。`;

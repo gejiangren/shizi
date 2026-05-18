@@ -2006,6 +2006,18 @@ def api_dl_settings_set(req: DLSettingsReq):
     return {"ok": True}
 
 # ---------- Static / index ----------
+# 静态文件加 no-cache 头：WKWebView 默认缓存激进，改代码后 .app 重启
+# 也可能拿到旧 JS/CSS。这里强制每次请求都走网络（本地 HTTP，开销微忽略）。
+@app.middleware("http")
+async def _no_cache_static(request: Request, call_next):
+    response = await call_next(request)
+    path = request.url.path
+    if path.startswith("/static/") or path == "/":
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
+
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 @app.get("/")
