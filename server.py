@@ -122,6 +122,15 @@ DEFAULT_PROMPTS = {
 转录稿如下：
 
 {TEXT}""",
+    "translate-zh": """把下面的转录稿翻译成简体中文。要求：
+1. 自然流畅的中文表达，不要直译腔
+2. 保留原文的语气、口吻、停顿感（演讲就是演讲调，对话就是对话调）
+3. 专有名词（人名、品牌名、技术名词）保留原文 + 括号中文标注，例如 OpenAI、Whisper（语音识别模型）
+4. 数字、单位、代码片段保留原样
+5. 输出纯中文译文，不要附原文、不要"翻译如下"之类前言
+转录稿如下：
+
+{TEXT}""",
 }
 
 PROVIDER_PRESETS = {
@@ -1119,16 +1128,41 @@ def run_pipeline(job: Job):
 
         job.log("inf", f"加载模型: {model_id}")
         t_tr_start = time.time()
-        result = mlx_whisper.transcribe(
-            str(audio_path),
-            path_or_hf_repo=model_id,
-            language=language,
-            verbose=False,
-            initial_prompt=initial_prompt,
-            condition_on_previous_text=True,  # 让段间承上启下，标点更连贯
-        )
+
+        # mlx_whisper.transcribe 是同步阻塞，无进度回调。起后台 thread 按
+        # "Apple Silicon large-v3 ~5x 实时" 经验估算 ETA，每 0.5s emit
+        # 进度（封顶 95%），真完成后 emit 100%。视觉上进度条不再死板。
+        _audio_s = float(job.duration or 0) or 60.0
+        _eta_s = max(8.0, _audio_s / 5.0)  # 估算转录耗时
+        _done_flag = {"v": False}
+        def _sim_progress():
+            while not _done_flag["v"] and not job.cancel_event.is_set():
+                elapsed = time.time() - t_tr_start
+                pct = min(95.0, elapsed / _eta_s * 100.0)
+                job.progress = pct
+                job.emit("progress", stage="transcribe", progress=pct,
+                         detail=f"{int(elapsed)}s / 估算 {int(_eta_s)}s")
+                time.sleep(0.5)
+        _sim = threading.Thread(target=_sim_progress, daemon=True)
+        _sim.start()
+
+        try:
+            result = mlx_whisper.transcribe(
+                str(audio_path),
+                path_or_hf_repo=model_id,
+                language=language,
+                verbose=False,
+                initial_prompt=initial_prompt,
+                condition_on_previous_text=True,  # 让段间承上启下，标点更连贯
+            )
+        finally:
+            _done_flag["v"] = True
+            _sim.join(timeout=1.0)
+
         if job.cancel_event.is_set():
             raise InterruptedError("cancelled")
+        job.progress = 100
+        job.emit("progress", stage="transcribe", progress=100)
 
         job.segments = [
             {"start": s["start"], "end": s["end"], "text": s["text"].strip()}

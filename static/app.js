@@ -915,6 +915,10 @@
         h("button", {class:"btn-secondary", onClick: () => api.downloadResult(j.id, "txt")}, icon("Download",{size:13}), "下载 .txt"),
         h("button", {
           class:"btn-secondary ai-action-btn",
+          onClick: () => handleAIOrganize(j.id, "translate-zh", j.title)
+        }, h("span", {class:"ai-text-badge"}, "AI"), "翻译"),
+        h("button", {
+          class:"btn-secondary ai-action-btn",
           onClick: () => handleAIOrganize(j.id, "smart-doc", j.title)
         }, h("span", {class:"ai-text-badge"}, "AI"), "整理"),
       ),
@@ -1415,11 +1419,12 @@
 
     // Output mode selector — AI modes shown but disabled
     const modes = [
-      {k:"smart-doc", ai:true,  ic:"Doc",       name:"整理文档",     desc:"分章节 · 去口语化 · 自动目录"},
-      {k:"notes",     ai:true,  ic:"Notes",     name:"学习笔记",     desc:"要点 · 关键词 · 一句话总结"},
-      {k:"qa",        ai:true,  ic:"Clipboard", name:"Q&A 卡片",    desc:"问答对 · 可导入 Anki"},
-      {k:"mindmap",   ai:true,  ic:"MindMap",   name:"思维导图",     desc:"Markdown / Mermaid 格式"},
-      {k:"srt-bundle",ai:false, ic:"Waveform",  name:"字幕合集",     desc:"连续 .srt · 自动偏移"},
+      {k:"smart-doc",    ai:true,  ic:"Doc",       name:"整理文档",   desc:"分章节 · 去口语化 · 自动目录"},
+      {k:"notes",        ai:true,  ic:"Notes",     name:"学习笔记",   desc:"要点 · 关键词 · 一句话总结"},
+      {k:"qa",           ai:true,  ic:"Clipboard", name:"Q&A 卡片",  desc:"问答对 · 可导入 Anki"},
+      {k:"mindmap",      ai:true,  ic:"MindMap",   name:"思维导图",   desc:"Markdown / Mermaid 格式"},
+      {k:"translate-zh", ai:true,  ic:"Doc",       name:"翻译成中文", desc:"外语稿 → 流畅中文译文"},
+      {k:"srt-bundle",   ai:false, ic:"Waveform",  name:"字幕合集",   desc:"连续 .srt · 自动偏移"},
     ];
     wrap.appendChild(h("div", {class:"output-mode-strip"},
       h("div", {class:"output-mode-hd"}, "合并后的输出形式"),
@@ -2585,10 +2590,11 @@
   // AI: organize view
   // ============================================================
   const MODE_LABELS = {
-    "smart-doc": {label: "整理文档", ic: "Doc",       desc: "去口语化 · 分章节 · 时间戳标注"},
-    "notes":     {label: "学习笔记", ic: "Notes",     desc: "要点 + 关键词 + 一句话总结"},
-    "qa":        {label: "Q&A 卡片", ic: "Clipboard", desc: "问答对，可导入 Anki"},
-    "mindmap":   {label: "思维导图", ic: "MindMap",   desc: "Markdown 缩进树"},
+    "smart-doc":    {label: "整理文档",   ic: "Doc",       desc: "去口语化 · 分章节 · 时间戳标注"},
+    "notes":        {label: "学习笔记",   ic: "Notes",     desc: "要点 + 关键词 + 一句话总结"},
+    "qa":           {label: "Q&A 卡片",  ic: "Clipboard", desc: "问答对，可导入 Anki"},
+    "mindmap":      {label: "思维导图",   ic: "MindMap",   desc: "Markdown 缩进树"},
+    "translate-zh": {label: "翻译成中文", ic: "Doc",       desc: "外语转录稿 → 流畅中文译文"},
   };
 
   function renderAIOrganize() {
