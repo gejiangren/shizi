@@ -913,10 +913,15 @@
       h("div", {class:"complete-actions"},
         h("button", {class:"btn-secondary", onClick: () => copyText(j.full_text || "")}, icon("Copy",{size:13}), "复制"),
         h("button", {class:"btn-secondary", onClick: () => api.downloadResult(j.id, "txt")}, icon("Download",{size:13}), "下载 .txt"),
+        // 翻译：默认本地（离线、不需 LLM）；按住 Shift 走 LLM 翻译（更准）
         h("button", {
-          class:"btn-secondary ai-action-btn",
-          onClick: () => handleAIOrganize(j.id, "translate-zh", j.title)
-        }, h("span", {class:"ai-text-badge"}, "AI"), "翻译"),
+          class:"btn-secondary",
+          title: "翻译成中文 · 本地离线 · 按住 Shift 走 LLM（需配置 API Key）",
+          onClick: (e) => {
+            if (e.shiftKey) handleAIOrganize(j.id, "translate-zh", j.title);
+            else handleLocalTranslate(j.id, j.title, "en", "zh");
+          }
+        }, icon("Doc",{size:13}), "翻译为中文"),
         h("button", {
           class:"btn-secondary ai-action-btn",
           onClick: () => handleAIOrganize(j.id, "smart-doc", j.title)
@@ -2699,6 +2704,46 @@
       error: (d) => { state.ai.organizeError = d.error || String(d); state.ai.organizing = false; render(); },
       done: () => { state.ai.organizing = false; render(); },
       end:  () => { state.ai.organizing = false; render(); },
+    }, state.ai.organizeAbort.signal).catch(e => {
+      if (e.name !== "AbortError") {
+        state.ai.organizeError = String(e); state.ai.organizing = false; render();
+      }
+    });
+  }
+
+  // 本地翻译（argos-translate，不依赖 LLM）。复用 ai-organizing 视图，
+  // 边收 segment 边把译文拼到 organizeText 显示。
+  async function handleLocalTranslate(jobId, title, src = "en", dst = "zh") {
+    state.flow = "ai-organizing";
+    state.ai.organizing = true;
+    state.ai.organizeText = "";
+    state.ai.organizeError = null;
+    state.ai.organizeMode = "translate-zh";
+    state.ai.organizeMeta = {provider: "argos-translate", model: `${src}→${dst} (本地)`};
+    state.ai.organizeSource = {job_id: jobId, title};
+    state.ai.organizeAbort = new AbortController();
+    render();
+
+    streamPostSSE("/api/translate/local", {job_id: jobId, src, dst}, {
+      status: (d) => {
+        if (d.phase === "loading") {
+          state.ai.organizeText = `_${d.msg || "初始化本地翻译…"}_\n\n`;
+          const md = document.querySelector(".ai-doc");
+          if (md) md.innerHTML = renderMarkdown(state.ai.organizeText) + '<span class="ai-cursor">▍</span>';
+        } else if (d.phase === "translating") {
+          state.ai.organizeText = "";
+          const md = document.querySelector(".ai-doc");
+          if (md) md.innerHTML = '<span class="ai-cursor">▍</span>';
+        }
+      },
+      segment: (d) => {
+        state.ai.organizeText += (d.text || "") + "\n\n";
+        const md = document.querySelector(".ai-doc");
+        if (md) md.innerHTML = renderMarkdown(state.ai.organizeText) + (state.ai.organizing ? '<span class="ai-cursor">▍</span>' : "");
+      },
+      error: (d) => { state.ai.organizeError = d.error || String(d); state.ai.organizing = false; render(); },
+      done:  () => { state.ai.organizing = false; render(); },
+      end:   () => { state.ai.organizing = false; render(); },
     }, state.ai.organizeAbort.signal).catch(e => {
       if (e.name !== "AbortError") {
         state.ai.organizeError = String(e); state.ai.organizing = false; render();

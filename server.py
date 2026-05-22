@@ -1696,6 +1696,93 @@ async def api_ai_organize(req: AIOrganizeReq):
     return StreamingResponse(_organize_stream(req), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
+
+# ============================================================
+# 本地翻译（argos-translate）——不依赖 LLM、不联网、完全离线
+# ============================================================
+_argos_ready: dict[str, bool] = {}  # 缓存"某语言对已装包"的判断结果
+
+def _ensure_argos_pair(src: str, dst: str) -> None:
+    """确保 src→dst 语言包已装；没装就 download + install。"""
+    key = f"{src}->{dst}"
+    if _argos_ready.get(key):
+        return
+    import argostranslate.package as pkg, argostranslate.translate as tr
+    # 看是否已经在已装列表
+    installed = {(l.code, t.code)
+                 for l in tr.get_installed_languages()
+                 for t in l.translations_from}
+    if (src, dst) in installed:
+        _argos_ready[key] = True
+        return
+    pkg.update_package_index()
+    avail = pkg.get_available_packages()
+    target = next((p for p in avail if p.from_code == src and p.to_code == dst), None)
+    if not target:
+        raise RuntimeError(f"argos-translate 没有 {src}→{dst} 语言包")
+    path = target.download()
+    pkg.install_from_path(path)
+    _argos_ready[key] = True
+
+
+def _argos_translate(text: str, src: str, dst: str) -> str:
+    import argostranslate.translate as tr
+    _ensure_argos_pair(src, dst)
+    return tr.translate(text, src, dst)
+
+
+class LocalTranslateReq(BaseModel):
+    job_id: str
+    src: str = "en"
+    dst: str = "zh"
+
+
+def _local_translate_stream(req: LocalTranslateReq):
+    """按 segment 流式翻译。第一次需下载语言包（~200MB），之后纯本地，每段
+    ~0.1-0.5s。前端能边收边渲染。"""
+    j = JOBS.get(req.job_id)
+    segments: list = []
+    if j and j.segments:
+        segments = j.segments
+    else:
+        # 从历史里读
+        with get_db() as conn:
+            row = conn.execute("SELECT file_base FROM history WHERE id=?", (req.job_id,)).fetchone()
+            if not row:
+                yield f'event: error\ndata: {json.dumps({"error":"找不到这条转录记录"})}\n\n'
+                return
+            d = dict(row)
+            jpath = OUTPUTS_DIR / (d["file_base"] + ".json")
+            if jpath.exists():
+                obj = json.loads(jpath.read_text(encoding="utf-8"))
+                segments = obj.get("segments") or []
+    if not segments:
+        yield f'event: error\ndata: {json.dumps({"error":"这条转录没有可翻译的内容"})}\n\n'
+        return
+
+    # 第一次装包可能慢，先告诉前端
+    yield f'event: status\ndata: {json.dumps({"phase":"loading","msg":"准备本地翻译模型…"}, ensure_ascii=False)}\n\n'
+    try:
+        _ensure_argos_pair(req.src, req.dst)
+    except Exception as e:
+        yield f'event: error\ndata: {json.dumps({"error": f"加载翻译模型失败: {e}"}, ensure_ascii=False)}\n\n'
+        return
+
+    yield f'event: status\ndata: {json.dumps({"phase":"translating","total":len(segments)}, ensure_ascii=False)}\n\n'
+    for i, seg in enumerate(segments):
+        try:
+            zh = _argos_translate(seg.get("text", "").strip(), req.src, req.dst)
+        except Exception as e:
+            zh = f"[翻译失败: {e}]"
+        yield f'event: segment\ndata: {json.dumps({"index": i, "start": seg.get("start"), "end": seg.get("end"), "text": zh}, ensure_ascii=False)}\n\n'
+    yield f'event: done\ndata: {{}}\n\n'
+
+
+@app.post("/api/translate/local")
+def api_translate_local(req: LocalTranslateReq):
+    return StreamingResponse(_local_translate_stream(req), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
 # ============================================================
 # Local file upload (for "本地文件" button)
 # ============================================================
